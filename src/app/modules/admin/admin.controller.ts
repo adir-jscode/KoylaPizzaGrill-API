@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { Admin } from "./admin.model";
 import httpStatus from "http-status-codes";
+import { AdminServices } from "./admin.service";
 
 const createAdmin = async (req: Request, res: Response) => {
   try {
-    const { username, password, email, name } = req.body;
-    const admin = await Admin.create({ username, password, email, name });
+    const admin = await AdminServices.createAdmin(req.body);
     res
       .status(httpStatus.CREATED)
       .json({ success: true, message: "New admin created", admin });

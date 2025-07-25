@@ -3,7 +3,7 @@ import { IAdmin } from "./admin.interface";
 
 const adminSchema = new Schema<IAdmin>(
   {
-    username: { type: String, required: true },
+    username: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     isActive: { type: Boolean, default: false },
