@@ -1,7 +1,7 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import { AdminRoutes } from "./app/modules/admin/admin.route";
 import { router } from "./app/routes";
+import { globalErrorHandler } from "./app/middlewares/globalErrorHandler";
 
 const app = express();
 app.use(express.json());
@@ -14,4 +14,7 @@ app.get("/", (req: Request, res: Response) => {
     .status(200)
     .json({ success: true, message: "Welcome to KoylaPizzaGrill Server 🍕" });
 });
+
+app.use(globalErrorHandler);
+
 export default app;
