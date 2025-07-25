@@ -1,6 +1,12 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
+import { AdminRoutes } from "./app/modules/admin/admin.route";
 
 const app = express();
+app.use(express.json());
+app.use(cors());
+
+app.use("/api/v1/admin", AdminRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res
