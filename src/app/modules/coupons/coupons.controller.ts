@@ -20,6 +20,23 @@ const createCoupon = async (
     next(err);
   }
 };
+const getAllCoupons = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const coupons = await CouponServices.getAllCoupons();
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "All Coupons Retrived Successfully",
+      data: coupons,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};
 
 const deleteCoupon = async (
   req: Request,
@@ -66,10 +83,7 @@ const UpdateCoupon = async (
 ) => {
   try {
     const id = req.params.id;
-    console.log(id);
-    console.log("body", req.body);
     const coupon = await CouponServices.updateCoupon(id, req.body);
-    console.log("updated", coupon);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -85,4 +99,5 @@ export const CouponControllers = {
   deleteCoupon,
   UpdateCouponStatus,
   UpdateCoupon,
+  getAllCoupons,
 };

@@ -8,6 +8,11 @@ const createCoupons = async (payload: Partial<ICoupon>) => {
   return coupon;
 };
 
+const getAllCoupons = async () => {
+  const coupons = await Coupon.find({});
+  return coupons;
+};
+
 const updateCouponStatus = async (id: string, payload: Partial<ICoupon>) => {
   const isCouponExist = await Coupon.findById(id);
   if (!isCouponExist) {
@@ -49,4 +54,5 @@ export const CouponServices = {
   deleteCoupon,
   updateCouponStatus,
   updateCoupon,
+  getAllCoupons,
 };

@@ -12,7 +12,7 @@ const credentialsLogin = async (
     const loginInfo = await AuthServices.credentialsLogin(req.body);
     sendResponse(res, {
       success: true,
-      statusCode: httpStatus.OK,
+      statusCode: httpStatus.CREATED,
       message: "Logged In Successfully",
       data: loginInfo,
     });

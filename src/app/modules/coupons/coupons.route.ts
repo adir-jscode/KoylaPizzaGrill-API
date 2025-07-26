@@ -6,9 +6,10 @@ import {
   updateCouponZodSchema,
 } from "./coupons.validation";
 import { checkAuth } from "../../middlewares/checkAuth";
-import { updateAdminZodSchema } from "../admin/admin.validation";
 
 const router = Router();
+
+router.get("/", CouponControllers.getAllCoupons);
 
 router.post(
   "/add-coupon",
