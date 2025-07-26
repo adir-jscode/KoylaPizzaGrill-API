@@ -6,9 +6,12 @@ import { sendResponse } from "../../utils/sendResponse";
 const createAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const admin = await AdminServices.createAdmin(req.body);
-    res
-      .status(httpStatus.CREATED)
-      .json({ success: true, message: "New admin created", admin });
+    sendResponse(res, {
+      statusCode: httpStatus.CREATED,
+      success: true,
+      message: "Admin Created Successfully",
+      data: admin,
+    });
   } catch (err: any) {
     next(err);
   }
