@@ -7,6 +7,12 @@ const createAdmin = async (payload: Partial<IAdmin>) => {
   return admin;
 };
 
+const getAllAdmins = async () => {
+  const admins = await Admin.find({});
+  return admins;
+};
+
 export const AdminServices = {
   createAdmin,
+  getAllAdmins,
 };
