@@ -1,4 +1,5 @@
 import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
+import AppError from "../errorHelpers/AppError";
 
 export const generateToken = (
   payload: JwtPayload,

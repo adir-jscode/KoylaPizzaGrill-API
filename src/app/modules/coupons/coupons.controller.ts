@@ -21,6 +21,68 @@ const createCoupon = async (
   }
 };
 
+const deleteCoupon = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id;
+    const coupon = await CouponServices.deleteCoupon(id);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Deleted Successfully",
+      data: coupon,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const UpdateCouponStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id;
+    console.log("body", req.body);
+    const coupon = await CouponServices.updateCouponStatus(id, req.body);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Status Updated",
+      data: coupon,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};
+const UpdateCoupon = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id;
+    console.log(id);
+    console.log("body", req.body);
+    const coupon = await CouponServices.updateCoupon(id, req.body);
+    console.log("updated", coupon);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Coupone Updated",
+      data: coupon,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};
 export const CouponControllers = {
   createCoupon,
+  deleteCoupon,
+  UpdateCouponStatus,
+  UpdateCoupon,
 };
