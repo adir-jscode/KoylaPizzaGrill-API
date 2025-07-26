@@ -4,6 +4,7 @@ import { AdminServices } from "./admin.service";
 
 const createAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    throw new Error("Testing error");
     const admin = await AdminServices.createAdmin(req.body);
     res
       .status(httpStatus.CREATED)

@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { envVars } from "../config/env";
 import httpStatus from "http-status-codes";
+import AppError from "../errorHelpers/AppError";
 
 export const globalErrorHandler = (
   err: any,
@@ -8,8 +9,16 @@ export const globalErrorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  const message = `Something went wrong!! ${err.message}`;
-  res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+  let statusCode = 500;
+  let message = `Something went wrong!!`;
+  if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    message = err.message;
+  } else if (err instanceof Error) {
+    statusCode = 500;
+    message = err.message;
+  }
+  res.status(statusCode).json({
     success: false,
     message: message,
     err,
