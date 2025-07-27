@@ -73,9 +73,13 @@ export const updateMenuItem = async (
   next: NextFunction
 ) => {
   try {
+    const payload: IMenuItem = {
+      ...req.body,
+      imageUrl: req.file?.path,
+    };
     const updated = await MenuItemService.updateMenuItem(
       req.params.id,
-      req.body
+      payload
     );
     if (!updated)
       return res
