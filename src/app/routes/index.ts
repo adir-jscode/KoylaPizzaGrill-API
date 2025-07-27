@@ -7,6 +7,7 @@ import { MenuItemsRoutes } from "../modules/menuItem/menuItem.routes";
 import { RestaurantSettingsRoutes } from "../modules/restaurantSettings/restaurantSettings.route";
 import { ScheduledClosingRoutes } from "../modules/scheduledClosing/scheduledClosing.route";
 import { RestaurantHourRoutes } from "../modules/restaurantHour/restaurantHour.route";
+import { OrderRoutes } from "../modules/order/order.routes";
 
 export const router = Router();
 
@@ -42,6 +43,10 @@ const moduleRoutes = [
   {
     path: "/restaurant-hours",
     route: RestaurantHourRoutes,
+  },
+  {
+    path: "/order",
+    route: OrderRoutes,
   },
 ];
 
