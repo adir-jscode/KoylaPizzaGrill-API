@@ -7,5 +7,4 @@ export interface IRestaurantSettings {
   deliveryFee: number;
   taxRate: number;
   minDeliveryAmount?: number;
-  updatedAt: Date;
 }

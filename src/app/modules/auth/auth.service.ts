@@ -3,7 +3,8 @@ import { IAdmin } from "../admin/admin.interface";
 import { Admin } from "../admin/admin.model";
 import httpStatus from "http-status-codes";
 import bcryptjs from "bcryptjs";
-import { generateToken } from "../../utils/jwt";
+import { createUserTokens } from "../../utils/userTokens";
+import { JwtPayload } from "jsonwebtoken";
 import { envVars } from "../../config/env";
 
 const credentialsLogin = async (payload: Partial<IAdmin>) => {
@@ -21,19 +22,39 @@ const credentialsLogin = async (payload: Partial<IAdmin>) => {
   if (!isPasswordMatched) {
     throw new AppError(httpStatus.BAD_REQUEST, "Incorrect Password");
   }
-  const jwtPayload = {
-    userId: isUserExist._id,
-    email: isUserExist.email,
-  };
-  const accessToken = generateToken(
-    jwtPayload,
-    envVars.JWT_ACCESS_SECRET,
-    envVars.JWT_ACCESS_EXPIRES
-  );
+
+  const userTokens = createUserTokens(isUserExist);
+  const { password: pass, ...rest } = isUserExist.toObject();
 
   return {
-    accessToken,
+    accessToken: userTokens.accessToken,
+    refreshToken: userTokens.refreshToken,
+    admin: rest,
   };
 };
 
-export const AuthServices = { credentialsLogin };
+const resetPassword = async (
+  oldPassword: string,
+  newPassword: string,
+  decodedToken: JwtPayload
+) => {
+  const email = decodedToken.email;
+  const user = await Admin.findOne({ email });
+
+  const isOldPasswordMatch = await bcryptjs.compare(
+    oldPassword,
+    user!.password as string
+  );
+  if (!isOldPasswordMatch) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Old Password does not match");
+  }
+
+  user!.password = await bcryptjs.hash(
+    newPassword,
+    Number(envVars.BCRYPT_SALT_ROUND)
+  );
+
+  user!.save();
+};
+
+export const AuthServices = { credentialsLogin, resetPassword };

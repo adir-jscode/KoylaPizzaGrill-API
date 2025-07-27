@@ -1,0 +1,15 @@
+import { Router } from "express";
+import * as ctrl from "./restaurantHour.controller";
+import { validateRequest } from "../../middlewares/validateRequest";
+import { restaurantHourZodSchema } from "./restaurantHour.validation";
+
+const router = Router();
+router.get("/", ctrl.getAllHours);
+router.get("/:day", ctrl.getHourByDay);
+router.put(
+  "/:day",
+  validateRequest(restaurantHourZodSchema),
+  ctrl.updateHourByDay
+);
+
+export const RestaurantHourRoutes = router;
