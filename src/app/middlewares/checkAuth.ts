@@ -17,6 +17,7 @@ export const checkAuth = (req: Request, res: Response, next: NextFunction) => {
       envVars.JWT_ACCESS_SECRET
     ) as JwtPayload;
 
+    req.user = verifiedToken;
     next();
   } catch (error) {
     next(error);

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { AdminRoutes } from "../modules/admin/admin.route";
 import { CouponRoutes } from "../modules/coupons/coupons.route";
 import { AuthRoutes } from "../modules/auth/auth.route";
+import { CategoriesRoutes } from "../modules/categories/categories.route";
 
 export const router = Router();
 
@@ -17,6 +18,10 @@ const moduleRoutes = [
   {
     path: "/coupon",
     route: CouponRoutes,
+  },
+  {
+    path: "/category",
+    route: CategoriesRoutes,
   },
 ];
 
