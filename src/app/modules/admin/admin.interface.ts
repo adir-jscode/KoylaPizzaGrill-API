@@ -4,5 +4,5 @@ export interface IAdmin {
   email: string;
   name: string;
   isActive: boolean;
-  last_login: Date;
+  last_login?: Date;
 }
