@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { RestaurantHourService } from "./restaurantHour.service";
 import httpStatus from "http-status-codes";
+import { sendResponse } from "../../utils/sendResponse";
 
 export const getAllHours = async (
   req: Request,
@@ -9,7 +10,12 @@ export const getAllHours = async (
 ) => {
   try {
     const hours = await RestaurantHourService.getAll();
-    res.status(httpStatus.OK).json({ success: true, data: hours });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "All data retrived Successfully",
+      data: hours,
+    });
   } catch (err) {
     next(err);
   }
@@ -24,7 +30,12 @@ export const getHourByDay = async (
     const hour = await RestaurantHourService.getByDay(Number(req.params.day));
     if (!hour)
       return res.status(404).json({ success: false, message: "Not found" });
-    res.status(httpStatus.OK).json({ success: true, data: hour });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data retrived Successfully",
+      data: hour,
+    });
   } catch (err) {
     next(err);
   }
@@ -40,7 +51,12 @@ export const updateHourByDay = async (
       Number(req.params.day),
       req.body
     );
-    res.status(httpStatus.OK).json({ success: true, data: updated });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data updated Successfully",
+      data: updated,
+    });
   } catch (err) {
     next(err);
   }

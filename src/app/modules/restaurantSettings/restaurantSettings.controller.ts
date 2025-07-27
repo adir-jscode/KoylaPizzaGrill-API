@@ -10,7 +10,12 @@ export const getSettings = async (
 ) => {
   try {
     const settings = await RestaurantSettingsService.getSettings();
-    res.status(httpStatus.OK).json({ success: true, data: settings });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "All data retrived Successfully",
+      data: settings,
+    });
   } catch (err) {
     next(err);
   }
@@ -42,7 +47,12 @@ export const updateSettings = async (
 ) => {
   try {
     const updated = await RestaurantSettingsService.updateSettings(req.body);
-    res.status(httpStatus.OK).json({ success: true, data: updated });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data updated Successfully",
+      data: updated,
+    });
   } catch (err) {
     next(err);
   }

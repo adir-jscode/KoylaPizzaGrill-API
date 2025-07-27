@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ScheduledClosingService } from "./scheduledClosing.service";
 import httpStatus from "http-status-codes";
+import { sendResponse } from "../../utils/sendResponse";
 
 export const getClosings = async (
   req: Request,
@@ -9,7 +10,12 @@ export const getClosings = async (
 ) => {
   try {
     const closings = await ScheduledClosingService.getAll();
-    res.status(httpStatus.OK).json({ success: true, data: closings });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "All data retrived Successfully",
+      data: closings,
+    });
   } catch (err) {
     next(err);
   }
@@ -24,7 +30,12 @@ export const getClosingById = async (
     const closing = await ScheduledClosingService.getById(req.params.id);
     if (!closing)
       return res.status(404).json({ success: false, message: "Not found" });
-    res.status(httpStatus.OK).json({ success: true, data: closing });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data retrived Successfully",
+      data: closing,
+    });
   } catch (err) {
     next(err);
   }
@@ -37,7 +48,12 @@ export const createClosing = async (
 ) => {
   try {
     const closing = await ScheduledClosingService.create(req.body);
-    res.status(httpStatus.CREATED).json({ success: true, data: closing });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.CREATED,
+      message: "Data created Successfully",
+      data: closing,
+    });
   } catch (err) {
     next(err);
   }
@@ -55,7 +71,12 @@ export const updateClosing = async (
     );
     if (!updated)
       return res.status(404).json({ success: false, message: "Not found" });
-    res.status(httpStatus.OK).json({ success: true, data: updated });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data updated Successfully",
+      data: updated,
+    });
   } catch (err) {
     next(err);
   }
@@ -70,9 +91,12 @@ export const deleteClosing = async (
     const removed = await ScheduledClosingService.remove(req.params.id);
     if (!removed)
       return res.status(404).json({ success: false, message: "Not found" });
-    res
-      .status(httpStatus.OK)
-      .json({ success: true, message: "Removed", data: null });
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Data deleted Successfully",
+      data: null,
+    });
   } catch (err) {
     next(err);
   }
