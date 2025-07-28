@@ -51,10 +51,6 @@ exports.getMenuItems = getMenuItems;
 const getMenuItemById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const menuItem = yield menuItem_service_1.MenuItemService.getMenuItemById(req.params.id);
-        if (!menuItem)
-            return res
-                .status(404)
-                .json({ success: false, message: "Menu item not found" });
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -72,10 +68,6 @@ const updateMenuItem = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     try {
         const payload = Object.assign(Object.assign({}, req.body), { imageUrl: (_a = req.file) === null || _a === void 0 ? void 0 : _a.path });
         const updated = yield menuItem_service_1.MenuItemService.updateMenuItem(req.params.id, payload);
-        if (!updated)
-            return res
-                .status(404)
-                .json({ success: false, message: "Menu item not found" });
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -91,10 +83,6 @@ exports.updateMenuItem = updateMenuItem;
 const deleteMenuItem = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const deleted = yield menuItem_service_1.MenuItemService.deleteMenuItem(req.params.id);
-        if (!deleted)
-            return res
-                .status(404)
-                .json({ success: false, message: "Menu item not found" });
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,

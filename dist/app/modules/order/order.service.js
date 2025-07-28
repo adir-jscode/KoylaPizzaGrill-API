@@ -181,8 +181,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.createOrder = createOrder;
-//Order (Pending)-Payment(Unpaid)->Payment Complete -> Backend(localhost:5000/api/v1/payment/success) -> Update Payment(PAID) & Order(CONFIRM) -> redirect to frontend -> Frontend(localhost:5173/payment/success)
-// Frontend(localhost:5173)  - Order (Pending) - Payment(Unpaid) -> SSLCommerz Page -> Payment Fail / Cancel -> Backend(localhost:5000) -> Update Payment(FAIL / CANCEL) & Booking(FAIL / CANCEL) -> redirect to frontend -> Frontend(localhost:5173/payment/cancel or localhost:5173/payment/fail)
 const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
     const order = yield order_model_1.Order.findById(orderId);
     if (!order) {

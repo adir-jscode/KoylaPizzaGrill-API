@@ -25,12 +25,16 @@ const getMenuItems = () => __awaiter(void 0, void 0, void 0, function* () {
     return menuItem_model_1.MenuItem.find().populate("categoryId");
 });
 const getMenuItemById = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    return menuItem_model_1.MenuItem.findById(id).populate("categoryId");
+    const menuItem = yield menuItem_model_1.MenuItem.findById(id).populate("categoryId");
+    if (!menuItem) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Menu Item not found");
+    }
+    return menuItem;
 });
 const updateMenuItem = (id, data) => __awaiter(void 0, void 0, void 0, function* () {
     const existingMenu = yield menuItem_model_1.MenuItem.findById(id);
     if (!existingMenu) {
-        throw new Error("Menu not found.");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Menu Item not found");
     }
     const updateMenu = yield menuItem_model_1.MenuItem.findByIdAndUpdate(id, data, {
         new: true,

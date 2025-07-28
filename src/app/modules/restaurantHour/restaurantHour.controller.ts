@@ -46,8 +46,6 @@ export const getHourByDay = async (
 ) => {
   try {
     const hour = await RestaurantHourService.getByDay(Number(req.params.day));
-    if (!hour)
-      return res.status(404).json({ success: false, message: "Not found" });
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

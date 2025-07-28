@@ -11,6 +11,6 @@ const router = (0, express_1.Router)();
 router.post("/add-menu", checkAuth_1.checkAuth, multer_config_1.multerUpload.single("file"), (0, validateRequest_1.validateRequest)(menuItem_validation_1.createMenuItemZodSchema), menuItem_controller_1.menuItemController.createMenuItem);
 router.get("/", menuItem_controller_1.menuItemController.getMenuItems);
 router.get("/:id", menuItem_controller_1.menuItemController.getMenuItemById);
-router.patch("/:id", checkAuth_1.checkAuth, multer_config_1.multerUpload.single("file"), (0, validateRequest_1.validateRequest)(menuItem_validation_1.updateMenuItemZodSchema), menuItem_controller_1.menuItemController.updateMenuItem);
+router.put("/:id", checkAuth_1.checkAuth, multer_config_1.multerUpload.single("file"), (0, validateRequest_1.validateRequest)(menuItem_validation_1.updateMenuItemZodSchema), menuItem_controller_1.menuItemController.updateMenuItem);
 router.delete("/:id", checkAuth_1.checkAuth, menuItem_controller_1.menuItemController.deleteMenuItem);
 exports.MenuItemsRoutes = router;
