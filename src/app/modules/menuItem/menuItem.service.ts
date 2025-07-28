@@ -14,13 +14,17 @@ const getMenuItems = async () => {
 };
 
 const getMenuItemById = async (id: string) => {
-  return MenuItem.findById(id).populate("categoryId");
+  const menuItem = await MenuItem.findById(id).populate("categoryId");
+  if (!menuItem) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Menu Item not found");
+  }
+  return menuItem;
 };
 
 const updateMenuItem = async (id: string, data: Partial<IMenuItem>) => {
   const existingMenu = await MenuItem.findById(id);
   if (!existingMenu) {
-    throw new Error("Menu not found.");
+    throw new AppError(httpStatus.BAD_REQUEST, "Menu Item not found");
   }
   const updateMenu = await MenuItem.findByIdAndUpdate(id, data, {
     new: true,

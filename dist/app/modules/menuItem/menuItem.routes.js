@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MenuItemsRoutes = void 0;
+const express_1 = require("express");
+const menuItem_controller_1 = require("./menuItem.controller");
+const multer_config_1 = require("../../config/multer.config");
+const validateRequest_1 = require("../../middlewares/validateRequest");
+const menuItem_validation_1 = require("./menuItem.validation");
+const checkAuth_1 = require("../../middlewares/checkAuth");
+const router = (0, express_1.Router)();
+router.post("/add-menu", checkAuth_1.checkAuth, multer_config_1.multerUpload.single("file"), (0, validateRequest_1.validateRequest)(menuItem_validation_1.createMenuItemZodSchema), menuItem_controller_1.menuItemController.createMenuItem);
+router.get("/", menuItem_controller_1.menuItemController.getMenuItems);
+router.get("/:id", menuItem_controller_1.menuItemController.getMenuItemById);
+router.patch("/:id", checkAuth_1.checkAuth, multer_config_1.multerUpload.single("file"), (0, validateRequest_1.validateRequest)(menuItem_validation_1.updateMenuItemZodSchema), menuItem_controller_1.menuItemController.updateMenuItem);
+router.delete("/:id", checkAuth_1.checkAuth, menuItem_controller_1.menuItemController.deleteMenuItem);
+exports.MenuItemsRoutes = router;

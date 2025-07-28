@@ -19,7 +19,7 @@ router.post(
 );
 router.get("/", menuItemController.getMenuItems);
 router.get("/:id", menuItemController.getMenuItemById);
-router.patch(
+router.put(
   "/:id",
   checkAuth,
   multerUpload.single("file"),

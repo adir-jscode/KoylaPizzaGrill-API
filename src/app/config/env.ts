@@ -17,6 +17,7 @@ interface EnvConfig {
   CLOUDINARY_API_SECRET: string;
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES: string;
+  FRONTEND_URL: string;
 }
 const loadEnviromentVariables = (): EnvConfig => {
   const requiredEnvVariables: string[] = [
@@ -34,6 +35,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     "CLOUDINARY_API_SECRET",
     "JWT_REFRESH_SECRET",
     "JWT_REFRESH_EXPIRES",
+    "FRONTEND_URL",
   ];
 
   requiredEnvVariables.forEach((key) => {
@@ -57,6 +59,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET as string,
     JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES as string,
+    FRONTEND_URL: process.env.FRONTEND_URL as string,
   };
 };
 export const envVars: EnvConfig = loadEnviromentVariables();

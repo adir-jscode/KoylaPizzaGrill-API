@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CouponRoutes = void 0;
+const express_1 = require("express");
+const coupons_controller_1 = require("./coupons.controller");
+const validateRequest_1 = require("../../middlewares/validateRequest");
+const coupons_validation_1 = require("./coupons.validation");
+const checkAuth_1 = require("../../middlewares/checkAuth");
+const router = (0, express_1.Router)();
+router.get("/", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.getAllCoupons);
+router.post("/add-coupon", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(coupons_validation_1.createCouponZodSchema), coupons_controller_1.CouponControllers.createCoupon);
+router.delete("/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.deleteCoupon);
+router.patch("/update-status/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.UpdateCouponStatus);
+router.put("/:id", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(coupons_validation_1.updateCouponZodSchema), coupons_controller_1.CouponControllers.UpdateCoupon);
+exports.CouponRoutes = router;

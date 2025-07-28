@@ -88,9 +88,7 @@ export const deleteClosing = async (
   next: NextFunction
 ) => {
   try {
-    const removed = await ScheduledClosingService.remove(req.params.id);
-    if (!removed)
-      return res.status(404).json({ success: false, message: "Not found" });
+    await ScheduledClosingService.remove(req.params.id);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

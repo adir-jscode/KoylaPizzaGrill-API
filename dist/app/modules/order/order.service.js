@@ -1,0 +1,201 @@
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updatePaymentOrderStatus = exports.createOrder = void 0;
+const stripe_1 = require("../../config/stripe");
+const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
+const coupons_interface_1 = require("../coupons/coupons.interface");
+const coupons_model_1 = require("../coupons/coupons.model");
+const menuItem_model_1 = require("../menuItem/menuItem.model");
+const payment_interface_1 = require("../payment/payment.interface");
+const payment_model_1 = require("../payment/payment.model");
+const order_interface_1 = require("./order.interface");
+const order_model_1 = require("./order.model");
+const http_status_codes_1 = __importDefault(require("http-status-codes"));
+const getTransactionId = () => {
+    return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+};
+const generateOrderNumber = () => {
+    return `KPG-${Date.now()}`;
+};
+const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    const transactionId = getTransactionId();
+    const session = yield order_model_1.Order.startSession();
+    session.startTransaction();
+    try {
+        let subtotal = 0;
+        let preparedItems = [];
+        for (const orderItem of payload.orderItems) {
+            const menuItem = yield menuItem_model_1.MenuItem.findById(orderItem.menuItemId).lean();
+            if (!menuItem)
+                throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, `Menu item ${orderItem.menuItemId} not found.`);
+            const basePrice = menuItem.price;
+            let primaryOptPrice = 0;
+            if (orderItem.primaryOption) {
+                const foundOpt = menuItem.primaryOption.options.find((opt) => opt.name === orderItem.primaryOption.name);
+                primaryOptPrice = (_a = foundOpt === null || foundOpt === void 0 ? void 0 : foundOpt.price) !== null && _a !== void 0 ? _a : 0;
+            }
+            // Calculate secondary options total price
+            let secondaryOptTotal = 0;
+            if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
+                for (const so of orderItem.secondaryOptions) {
+                    const foundSec = menuItem.secondaryOptions.find((sec) => sec.name === so.name);
+                    if (foundSec) {
+                        const foundPrice = (_d = (_c = (_b = foundSec.options.find((opt) => opt.name === so.name)) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : so.price) !== null && _d !== void 0 ? _d : 0;
+                        secondaryOptTotal += foundPrice;
+                    }
+                    else {
+                        secondaryOptTotal += (_e = so.price) !== null && _e !== void 0 ? _e : 0;
+                    }
+                }
+            }
+            // Calculate addons total price
+            let addonsTotal = 0;
+            if (orderItem.addons && menuItem.addons) {
+                for (const add of orderItem.addons) {
+                    const foundAdd = menuItem.addons.find((a) => a.name === add.name);
+                    addonsTotal += (_g = (_f = foundAdd === null || foundAdd === void 0 ? void 0 : foundAdd.price) !== null && _f !== void 0 ? _f : add.price) !== null && _g !== void 0 ? _g : 0;
+                }
+            }
+            const totalPrice = (basePrice + primaryOptPrice + secondaryOptTotal + addonsTotal) *
+                orderItem.quantity;
+            subtotal += totalPrice;
+            preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: orderItem.secondaryOptions, addons: orderItem.addons, totalPrice }));
+        }
+        // Calculate other charges
+        let deliveryFee = 0;
+        if (payload.orderType === order_interface_1.OrderType.DELIVERY)
+            deliveryFee = 5; // adjust as needed
+        const tip = (_h = payload.tip) !== null && _h !== void 0 ? _h : 0;
+        let discount = 0;
+        // Valid coupon application
+        if (payload.couponCode) {
+            const coupon = yield coupons_model_1.Coupon.findOne({
+                code: payload.couponCode,
+                active: true,
+                validFrom: { $lte: new Date() },
+                validTo: { $gte: new Date() },
+                $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
+            });
+            if (coupon && subtotal >= coupon.minOrder) {
+                if (coupon.type === coupons_interface_1.Type.PERCENTAGE) {
+                    discount = subtotal * (coupon.value / 100);
+                    if (coupon.maxDiscount)
+                        discount = Math.min(discount, coupon.maxDiscount);
+                }
+                else {
+                    discount = coupon.value;
+                }
+            }
+        }
+        discount = Math.max(discount, 0);
+        const TAX_RATE = 0.0875; //assume
+        const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+        const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
+        const orderNumber = generateOrderNumber();
+        //handling STATUS
+        /**
+         * CASH-> PAYMENT (UNPAID) -> PAYMENT STATUS UPDATED TO PAID MANUALLY
+         * CARD ->
+         */
+        // Prepare initial payment status and order status
+        let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
+        let orderStatus = "PENDING";
+        if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
+            paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
+            orderStatus = "CONFIRMED";
+        }
+        //order history
+        const statusHistory = [
+            {
+                status: "PENDING",
+                updatedAt: new Date().toISOString(),
+            },
+            ...(orderStatus === "CONFIRMED"
+                ? [
+                    {
+                        status: "CONFIRMED",
+                        updatedAt: new Date().toISOString(),
+                    },
+                ]
+                : []),
+        ];
+        // Create Payment document with payment status
+        const paymentDoc = yield payment_model_1.Payment.create([
+            {
+                order: null, // link after creating order
+                transactionId,
+                amount: total,
+                status: paymentStatus,
+                paymentMethod: payload.paymentMethod,
+            },
+        ], { session });
+        // Create Order document
+        const orderDoc = yield order_model_1.Order.create([
+            Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
+                tax,
+                tip,
+                discount,
+                total, status: orderStatus, statusHistory, payment: paymentDoc[0]._id }),
+        ], { session });
+        // Update payment with order reference
+        yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc[0]._id, { order: orderDoc[0]._id }, { new: true, runValidators: true, session });
+        // If card payment, create Stripe payment intent and save its client_secret in extra data
+        let clientSecret;
+        if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD) {
+            const paymentIntent = yield stripe_1.stripe.paymentIntents.create({
+                amount: Math.round(total * 100), // in cents
+                currency: "usd", // change if needed
+                metadata: { transactionId },
+                receipt_email: payload.customerEmail || undefined,
+            });
+            yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc[0]._id, { transactionId: paymentIntent.id, status: payment_interface_1.PAYMENT_STATUS.PAID }, { new: true, runValidators: true, session });
+            clientSecret = (_j = paymentIntent.client_secret) !== null && _j !== void 0 ? _j : undefined;
+        }
+        // After order creation, requery fresh order
+        const freshOrder = yield order_model_1.Order.findById(orderDoc[0]._id).session(session);
+        yield session.commitTransaction();
+        session.endSession();
+        return {
+            order: freshOrder !== null && freshOrder !== void 0 ? freshOrder : orderDoc[0],
+            payment: paymentDoc[0],
+            clientSecret,
+        };
+    }
+    catch (error) {
+        yield session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
+exports.createOrder = createOrder;
+//Order (Pending)-Payment(Unpaid)->Payment Complete -> Backend(localhost:5000/api/v1/payment/success) -> Update Payment(PAID) & Order(CONFIRM) -> redirect to frontend -> Frontend(localhost:5173/payment/success)
+// Frontend(localhost:5173)  - Order (Pending) - Payment(Unpaid) -> SSLCommerz Page -> Payment Fail / Cancel -> Backend(localhost:5000) -> Update Payment(FAIL / CANCEL) & Booking(FAIL / CANCEL) -> redirect to frontend -> Frontend(localhost:5173/payment/cancel or localhost:5173/payment/fail)
+const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.Order.findById(orderId);
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
+    }
+    order.status = "CONFIRMED";
+    order.save();
+    const payment = yield payment_model_1.Payment.findById(order.payment);
+    if (!payment) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment not received");
+    }
+    payment.status = payment_interface_1.PAYMENT_STATUS.PAID;
+    payment.save();
+    return payment;
+});
+exports.updatePaymentOrderStatus = updatePaymentOrderStatus;

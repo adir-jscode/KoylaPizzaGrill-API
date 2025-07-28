@@ -51,11 +51,6 @@ export const getMenuItemById = async (
 ) => {
   try {
     const menuItem = await MenuItemService.getMenuItemById(req.params.id);
-    if (!menuItem)
-      return res
-        .status(404)
-        .json({ success: false, message: "Menu item not found" });
-
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -81,10 +76,6 @@ export const updateMenuItem = async (
       req.params.id,
       payload
     );
-    if (!updated)
-      return res
-        .status(404)
-        .json({ success: false, message: "Menu item not found" });
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -103,10 +94,6 @@ export const deleteMenuItem = async (
 ) => {
   try {
     const deleted = await MenuItemService.deleteMenuItem(req.params.id);
-    if (!deleted)
-      return res
-        .status(404)
-        .json({ success: false, message: "Menu item not found" });
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

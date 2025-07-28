@@ -246,9 +246,6 @@ export const createOrder = async (
     throw error;
   }
 };
-//Order (Pending)-Payment(Unpaid)->Payment Complete -> Backend(localhost:5000/api/v1/payment/success) -> Update Payment(PAID) & Order(CONFIRM) -> redirect to frontend -> Frontend(localhost:5173/payment/success)
-
-// Frontend(localhost:5173)  - Order (Pending) - Payment(Unpaid) -> SSLCommerz Page -> Payment Fail / Cancel -> Backend(localhost:5000) -> Update Payment(FAIL / CANCEL) & Booking(FAIL / CANCEL) -> redirect to frontend -> Frontend(localhost:5173/payment/cancel or localhost:5173/payment/fail)
 
 export const updatePaymentOrderStatus = async (orderId: string) => {
   const order = await Order.findById(orderId);
