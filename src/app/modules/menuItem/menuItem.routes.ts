@@ -6,23 +6,26 @@ import {
   createMenuItemZodSchema,
   updateMenuItemZodSchema,
 } from "./menuItem.validation";
+import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = Router();
 
 router.post(
   "/add-menu",
+  checkAuth,
   multerUpload.single("file"),
   validateRequest(createMenuItemZodSchema),
   menuItemController.createMenuItem
 );
-router.get("/", menuItemController.getMenuItems);
-router.get("/:id", menuItemController.getMenuItemById);
+router.get("/", checkAuth, menuItemController.getMenuItems);
+router.get("/:id", checkAuth, menuItemController.getMenuItemById);
 router.patch(
   "/:id",
+  checkAuth,
   multerUpload.single("file"),
   validateRequest(updateMenuItemZodSchema),
   menuItemController.updateMenuItem
 );
-router.delete("/:id", menuItemController.deleteMenuItem);
+router.delete("/:id", checkAuth, menuItemController.deleteMenuItem);
 
 export const MenuItemsRoutes = router;

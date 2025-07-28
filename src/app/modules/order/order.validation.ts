@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-const orderTypeEnum = z.enum(["PICKUP", "DELIVERY"]);
 const orderStatusEnum = z.enum([
   "PENDING",
   "CONFIRMED",
@@ -11,14 +10,18 @@ const orderStatusEnum = z.enum([
   "CANCELLED",
 ]);
 
-const orderItemZod = z.object({
+const orderTypeEnum = z.enum(["PICKUP", "DELIVERY"]);
+
+const paymentMethodEnum = z.enum(["CARD", "CASH"]);
+
+const orderItemSchema = z.object({
   menuItemId: z.string().min(1),
-  name: z.string().min(1),
-  basePrice: z.number(),
+  name: z.string().optional(), // will be filled by server
+  basePrice: z.number().optional(),
   quantity: z.number().int().min(1),
   primaryOption: z.object({
-    name: z.string().min(1),
-    price: z.number(),
+    name: z.string(),
+    price: z.number().optional(), // server fills price
   }),
   secondaryOptions: z
     .array(
@@ -31,38 +34,37 @@ const orderItemZod = z.object({
   addons: z
     .array(
       z.object({
-        id: z.string(),
+        id: z.string().optional(),
         name: z.string(),
         price: z.number().optional(),
       })
     )
     .optional(),
-  totalPrice: z.number(),
+  totalPrice: z.number().optional(), // calculated server-side
 });
 
-const statusHistoryZod = z.object({
+const statusHistorySchema = z.object({
   status: orderStatusEnum,
-  updatedAt: z.string(), // Could use z.date().transform((d)=>d.toISOString()) if Date
+  updatedAt: z.string().min(1), // You may refine to datetime string if you want
 });
 
 export const createOrderZodSchema = z.object({
-  orderNumber: z.string().min(1),
   customerName: z.string().min(1),
   customerEmail: z.string().email().optional(),
   customerPhone: z.string().min(1),
   orderType: orderTypeEnum,
   isScheduled: z.boolean(),
   deliveryAddress: z.string().optional(),
-  orderItems: z.array(orderItemZod).min(1),
-  subtotal: z.number(),
-  deliveryFee: z.number().optional(),
-  tax: z.number(),
-  tip: z.number().optional(),
-  discount: z.number().optional(),
-  total: z.number(),
-  status: orderStatusEnum,
-  statusHistory: z.array(statusHistoryZod),
-  specialInstructions: z.string().optional(),
+  orderItems: z.array(orderItemSchema).min(1),
+  tip: z.number().nonnegative().optional(),
+  discount: z.number().nonnegative().optional(),
+  paymentMethod: paymentMethodEnum,
   couponCode: z.string().optional(),
-  payment: z.string().optional(), // as ObjectId string
 });
+
+// For update, all fields are optional but at least one must exist
+export const updateOrderZodSchema = createOrderZodSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided for update",
+  });

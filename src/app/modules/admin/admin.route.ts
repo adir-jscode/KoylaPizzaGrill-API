@@ -8,6 +8,7 @@ const router = Router();
 
 router.post(
   "/register",
+  checkAuth,
   validateRequest(createAdminZodSchema),
   AdminControllers.createAdmin
 );

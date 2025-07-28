@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { createOrder } from "./order.service";
+import { createOrder, updatePaymentOrderStatus } from "./order.service";
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
+import AppError from "../../errorHelpers/AppError";
 
 export const createOrderController = async (
   req: Request,
@@ -12,15 +13,14 @@ export const createOrderController = async (
     const payload = req.body;
 
     if (!payload.paymentMethod) {
-      return res.status(400).json({
-        success: false,
-        message: "paymentMethod is required in the payload (CARD or CASH)",
-      });
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Payment method is required (CARD or CASH)"
+      );
     }
 
-    const result = await createOrder(payload); // your service function
+    const result = await createOrder(payload);
 
-    // Return order, payment, and Stripe client secret if exists
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.CREATED,
@@ -28,10 +28,25 @@ export const createOrderController = async (
       data: {
         order: result.order,
         payment: result.payment,
-        clientSecret: result.clientSecret, // will be undefined for cash payments
       },
     });
   } catch (error) {
     next(error);
   }
+};
+
+export const changePaymentOrderStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const paymentInfo = await updatePaymentOrderStatus(req.params.id);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Status changed successfully",
+      data: paymentInfo,
+    });
+  } catch (error) {}
 };

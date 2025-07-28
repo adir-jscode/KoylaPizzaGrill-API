@@ -101,7 +101,7 @@ export const createOrder = async (
 
     // Calculate other charges
     let deliveryFee = 0;
-    if (payload.orderType === "DELIVERY") deliveryFee = 5; // adjust as needed
+    if (payload.orderType === OrderType.DELIVERY) deliveryFee = 5; // adjust as needed
 
     const tip = payload.tip ?? 0;
     let discount = 0;
@@ -138,6 +138,11 @@ export const createOrder = async (
 
     const orderNumber = generateOrderNumber();
 
+    //handling STATUS
+    /**
+     * CASH-> PAYMENT (UNPAID) -> PAYMENT STATUS UPDATED TO PAID MANUALLY
+     * CARD ->
+     */
     // Prepare initial payment status and order status
     let paymentStatus = PAYMENT_STATUS.UNPAID;
     let orderStatus: IStatusHistory["status"] = "PENDING";
@@ -147,6 +152,7 @@ export const createOrder = async (
       orderStatus = "CONFIRMED";
     }
 
+    //order history
     const statusHistory: IStatusHistory[] = [
       {
         status: "PENDING" as IStatusHistory["status"],
@@ -166,7 +172,7 @@ export const createOrder = async (
     const paymentDoc = await Payment.create(
       [
         {
-          order: undefined, // link after creating order
+          order: null, // link after creating order
           transactionId,
           amount: total,
           status: paymentStatus,
@@ -201,7 +207,7 @@ export const createOrder = async (
     await Payment.findByIdAndUpdate(
       paymentDoc[0]._id,
       { order: orderDoc[0]._id },
-      { session }
+      { new: true, runValidators: true, session }
     );
 
     // If card payment, create Stripe payment intent and save its client_secret in extra data
@@ -239,4 +245,23 @@ export const createOrder = async (
     session.endSession();
     throw error;
   }
+};
+//Order (Pending)-Payment(Unpaid)->Payment Complete -> Backend(localhost:5000/api/v1/payment/success) -> Update Payment(PAID) & Order(CONFIRM) -> redirect to frontend -> Frontend(localhost:5173/payment/success)
+
+// Frontend(localhost:5173)  - Order (Pending) - Payment(Unpaid) -> SSLCommerz Page -> Payment Fail / Cancel -> Backend(localhost:5000) -> Update Payment(FAIL / CANCEL) & Booking(FAIL / CANCEL) -> redirect to frontend -> Frontend(localhost:5173/payment/cancel or localhost:5173/payment/fail)
+
+export const updatePaymentOrderStatus = async (orderId: string) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
+  }
+  order.status = "CONFIRMED";
+  order.save();
+  const payment = await Payment.findById(order.payment);
+  if (!payment) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payment not received");
+  }
+  payment.status = PAYMENT_STATUS.PAID;
+  payment.save();
+  return payment;
 };

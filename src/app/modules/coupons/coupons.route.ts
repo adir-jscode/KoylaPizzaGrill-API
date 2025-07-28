@@ -9,15 +9,16 @@ import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = Router();
 
-router.get("/", CouponControllers.getAllCoupons);
+router.get("/", checkAuth, CouponControllers.getAllCoupons);
 
 router.post(
   "/add-coupon",
+  checkAuth,
   validateRequest(createCouponZodSchema),
   CouponControllers.createCoupon
 );
 
-router.delete("/:id", CouponControllers.deleteCoupon);
+router.delete("/:id", checkAuth, CouponControllers.deleteCoupon);
 router.patch(
   "/update-status/:id",
   checkAuth,
@@ -25,6 +26,7 @@ router.patch(
 );
 router.put(
   "/:id",
+  checkAuth,
   validateRequest(updateCouponZodSchema),
   CouponControllers.UpdateCoupon
 );

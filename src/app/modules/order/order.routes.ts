@@ -2,9 +2,16 @@ import { Router } from "express";
 import * as orderController from "./order.controller";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { createOrderZodSchema } from "./order.validation";
+import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = Router();
 
-router.post("/", orderController.createOrderController);
+router.post(
+  "/",
+  checkAuth,
+  validateRequest(createOrderZodSchema),
+  orderController.createOrderController
+);
 
+router.put("/:id", checkAuth, orderController.changePaymentOrderStatus);
 export const OrderRoutes = router;
