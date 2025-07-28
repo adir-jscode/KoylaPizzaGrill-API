@@ -4,6 +4,7 @@ import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { JwtPayload } from "jsonwebtoken";
 import { setAuthCookie } from "../../utils/setCookie";
+import AppError from "../../errorHelpers/AppError";
 
 const credentialsLogin = async (
   req: Request,
@@ -23,6 +24,33 @@ const credentialsLogin = async (
     next(error);
   }
 };
+
+const getNewAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "No refresh token recieved from cookies"
+    );
+  }
+  const tokenInfo = await AuthServices.getNewAccessToken(
+    refreshToken as string
+  );
+
+  setAuthCookie(res, tokenInfo);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "New Access Token Retrived Successfully",
+    data: tokenInfo,
+  });
+};
+
 const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.clearCookie("accessToken", {
@@ -76,4 +104,5 @@ export const AuthControllers = {
   credentialsLogin,
   logout,
   resetPassword,
+  getNewAccessToken,
 };

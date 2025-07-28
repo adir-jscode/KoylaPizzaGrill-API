@@ -3,7 +3,7 @@ import { Available, ICategory } from "./categories.interface";
 
 const CategorySchema = new Schema<ICategory>(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, unique: true },
     description: { type: String },
     display: { type: Boolean, default: true },
     available: [{ type: String, enum: Object.values(Available) }],

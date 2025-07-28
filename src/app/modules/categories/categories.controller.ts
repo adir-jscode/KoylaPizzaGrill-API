@@ -86,8 +86,7 @@ export const deleteCategory = async (
   next: NextFunction
 ) => {
   try {
-    const deleted = await CategoryService.deleteCategory(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Not found" });
+    await CategoryService.deleteCategory(req.params.id);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

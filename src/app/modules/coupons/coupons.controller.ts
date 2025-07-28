@@ -50,7 +50,7 @@ const deleteCoupon = async (
       statusCode: httpStatus.OK,
       success: true,
       message: "Deleted Successfully",
-      data: coupon,
+      data: null,
     });
   } catch (error) {
     next(error);
