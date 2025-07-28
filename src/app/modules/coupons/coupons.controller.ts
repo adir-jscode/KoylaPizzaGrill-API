@@ -45,7 +45,7 @@ const deleteCoupon = async (
 ) => {
   try {
     const id = req.params.id;
-    const coupon = await CouponServices.deleteCoupon(id);
+    await CouponServices.deleteCoupon(id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -64,7 +64,6 @@ const UpdateCouponStatus = async (
 ) => {
   try {
     const id = req.params.id;
-    console.log("body", req.body);
     const coupon = await CouponServices.updateCouponStatus(id, req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,

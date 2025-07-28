@@ -46,7 +46,6 @@ export const getCategoryById = async (
 ) => {
   try {
     const category = await CategoryService.getCategoryById(req.params.id);
-    if (!category) return res.status(404).json({ message: "Not found" });
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -68,7 +67,6 @@ export const updateCategory = async (
       req.params.id,
       req.body
     );
-    if (!updated) return res.status(404).json({ message: "Not found" });
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
