@@ -36,16 +36,16 @@ const deleteMenuItem = async (id: string) => {
   const menuItem = await MenuItem.findById(id);
 
   if (!menuItem) {
-    throw new AppError(httpStatus.NOT_FOUND, "Menu item not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Menu item not found");
   }
 
   if (menuItem.imageUrl) {
     try {
       await deleteImageFromCLoudinary(menuItem.imageUrl);
     } catch (error) {
-      console.error(
-        "Cloudinary image deletion failed - proceeding with menu item delete:",
-        error
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Cloudinary image deletion failed - proceeding with menu item delete:"
       );
     }
   }

@@ -4,6 +4,11 @@ import { validateRequest } from "../../middlewares/validateRequest";
 import { restaurantHourZodSchema } from "./restaurantHour.validation";
 
 const router = Router();
+router.post(
+  "/add-hours",
+  validateRequest(restaurantHourZodSchema),
+  ctrl.createRestaurantHour
+);
 router.get("/", ctrl.getAllHours);
 router.get("/:day", ctrl.getHourByDay);
 router.put(

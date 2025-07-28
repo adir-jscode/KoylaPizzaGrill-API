@@ -1,10 +1,13 @@
 import { model, Schema, Document } from "mongoose";
 import { IRestaurantHour, IHourRange } from "./restaurantHour.interface";
 
-const HourRangeSchema = new Schema<IHourRange>({
-  from: String,
-  to: String,
-});
+const HourRangeSchema = new Schema<IHourRange>(
+  {
+    from: String,
+    to: String,
+  },
+  { _id: false }
+);
 
 const RestaurantHourSchema = new Schema<IRestaurantHour>(
   {

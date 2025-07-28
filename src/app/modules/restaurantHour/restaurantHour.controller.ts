@@ -3,6 +3,24 @@ import { RestaurantHourService } from "./restaurantHour.service";
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
 
+export const createRestaurantHour = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const hour = await RestaurantHourService.createRestaurantHour(req.body);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.CREATED,
+      message: "All data retrived Successfully",
+      data: hour,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAllHours = async (
   req: Request,
   res: Response,
