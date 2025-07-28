@@ -8,10 +8,9 @@ const router = Router();
 
 router.post(
   "/",
-  checkAuth,
   validateRequest(createOrderZodSchema),
   orderController.createOrderController
 );
 
-router.put("/:id", checkAuth, orderController.changePaymentOrderStatus);
+router.patch("/:id", checkAuth, orderController.changePaymentOrderStatus);
 export const OrderRoutes = router;

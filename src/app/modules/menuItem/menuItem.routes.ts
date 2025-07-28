@@ -17,8 +17,8 @@ router.post(
   validateRequest(createMenuItemZodSchema),
   menuItemController.createMenuItem
 );
-router.get("/", checkAuth, menuItemController.getMenuItems);
-router.get("/:id", checkAuth, menuItemController.getMenuItemById);
+router.get("/", menuItemController.getMenuItems);
+router.get("/:id", menuItemController.getMenuItemById);
 router.patch(
   "/:id",
   checkAuth,
