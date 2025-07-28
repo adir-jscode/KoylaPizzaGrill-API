@@ -1,71 +1,242 @@
-import { Order } from "./order.model";
-import { IOrder } from "./order.interface";
 import { stripe } from "../../config/stripe";
+import AppError from "../../errorHelpers/AppError";
+import { Type } from "../coupons/coupons.interface";
+import { Coupon } from "../coupons/coupons.model";
+import { MenuItem } from "../menuItem/menuItem.model";
+import { PAYMENT_STATUS } from "../payment/payment.interface";
+import { Payment } from "../payment/payment.model";
+import {
+  IOrder,
+  IOrderItem,
+  IStatusHistory,
+  OrderType,
+  PAYMENT_METHOD,
+} from "./order.interface";
+import { Order } from "./order.model";
+import httpStatus from "http-status-codes";
 
-// Create order (status depends on payment_method)
-export const createOrder = async (payload: IOrder) => {
-  // Cash orders: instantly mark as 'confirmed' and paid
-  let status = "pending";
-  let payment_status: IOrder["payment_status"] = "pending";
-
-  if (payload.payment_method === "cash") {
-    status = "confirmed";
-    payment_status = "paid";
-  }
-
-  const newOrder = await Order.create({
-    ...payload,
-    status,
-    payment_status,
-    statusHistory: [
-      ...(payload.statusHistory || []),
-      { name: status, updatedAt: new Date().toISOString() },
-    ],
-  });
-
-  return newOrder;
+const getTransactionId = () => {
+  return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
-
-// Only for 'card' orders, create payment intent and save its ID
-export const createStripePaymentIntent = async (orderId: string) => {
-  const order = await Order.findById(orderId);
-  if (!order) throw new Error("Order not found");
-  if (order.payment_method !== "card")
-    throw new Error("Not a card payment order");
-
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(order.total * 100),
-    currency: "usd",
-    metadata: { orderId: order.id, customer: order.customer_name },
-    receipt_email: order.customer_email,
-  });
-
-  order.stripe_payment_intent_id = paymentIntent.id;
-  await order.save();
-
-  return paymentIntent.client_secret;
+const generateOrderNumber = () => {
+  return `KPG-${Date.now()}`;
 };
+export const createOrder = async (
+  payload: IOrder & { paymentMethod: PAYMENT_METHOD }
+) => {
+  const transactionId = getTransactionId();
+  const session = await Order.startSession();
 
-// Stripe Webhook: confirm payment and update order
-export const handleStripeWebhook = async (event: any) => {
-  if (event.type === "payment_intent.succeeded") {
-    const intent = event.data.object;
-    const order = await Order.findOne({ stripe_payment_intent_id: intent.id });
-    if (order) {
-      order.payment_status = "paid";
-      order.status = "confirmed";
-      order.statusHistory.push({
-        name: "confirmed",
-        updatedAt: new Date().toISOString(),
+  session.startTransaction();
+  try {
+    let subtotal = 0;
+    let preparedItems: IOrderItem[] = [];
+
+    for (const orderItem of payload.orderItems) {
+      const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
+
+      if (!menuItem)
+        throw new AppError(
+          httpStatus.NOT_FOUND,
+          `Menu item ${orderItem.menuItemId} not found.`
+        );
+
+      const basePrice = menuItem.price;
+
+      let primaryOptPrice = 0;
+      if (orderItem.primaryOption) {
+        const foundOpt = menuItem.primaryOption.options.find(
+          (opt) => opt.name === orderItem.primaryOption.name
+        );
+        primaryOptPrice = foundOpt?.price ?? 0;
+      }
+
+      // Calculate secondary options total price
+      let secondaryOptTotal = 0;
+      if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
+        for (const so of orderItem.secondaryOptions) {
+          const foundSec = menuItem.secondaryOptions.find(
+            (sec) => sec.name === so.name
+          );
+          if (foundSec) {
+            const foundPrice =
+              foundSec.options.find((opt) => opt.name === so.name)?.price ??
+              so.price ??
+              0;
+            secondaryOptTotal += foundPrice;
+          } else {
+            secondaryOptTotal += so.price ?? 0;
+          }
+        }
+      }
+
+      // Calculate addons total price
+      let addonsTotal = 0;
+      if (orderItem.addons && menuItem.addons) {
+        for (const add of orderItem.addons) {
+          const foundAdd = menuItem.addons.find((a) => a.name === add.name);
+          addonsTotal += foundAdd?.price ?? add.price ?? 0;
+        }
+      }
+
+      const totalPrice =
+        (basePrice + primaryOptPrice + secondaryOptTotal + addonsTotal) *
+        orderItem.quantity;
+
+      subtotal += totalPrice;
+
+      preparedItems.push({
+        ...orderItem,
+        name: menuItem.name,
+        basePrice,
+        primaryOption: {
+          ...orderItem.primaryOption,
+          price: primaryOptPrice,
+        },
+        secondaryOptions: orderItem.secondaryOptions,
+        addons: orderItem.addons,
+        totalPrice,
       });
-      order.payment_method = "card";
-      await order.save();
     }
+
+    // Calculate other charges
+    let deliveryFee = 0;
+    if (payload.orderType === "DELIVERY") deliveryFee = 5; // adjust as needed
+
+    const tip = payload.tip ?? 0;
+    let discount = 0;
+
+    // Valid coupon application
+    if (payload.couponCode) {
+      const coupon = await Coupon.findOne({
+        code: payload.couponCode,
+        active: true,
+        validFrom: { $lte: new Date() },
+        validTo: { $gte: new Date() },
+        $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
+      });
+
+      if (coupon && subtotal >= coupon.minOrder) {
+        if (coupon.type === Type.PERCENTAGE) {
+          discount = subtotal * (coupon.value / 100);
+          if (coupon.maxDiscount)
+            discount = Math.min(discount, coupon.maxDiscount);
+        } else {
+          discount = coupon.value;
+        }
+      }
+    }
+
+    discount = Math.max(discount, 0);
+
+    const TAX_RATE = 0.0875; //assume
+    const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+
+    const total = Number(
+      (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
+    );
+
+    const orderNumber = generateOrderNumber();
+
+    // Prepare initial payment status and order status
+    let paymentStatus = PAYMENT_STATUS.UNPAID;
+    let orderStatus: IStatusHistory["status"] = "PENDING";
+
+    if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
+      paymentStatus = PAYMENT_STATUS.UNPAID;
+      orderStatus = "CONFIRMED";
+    }
+
+    const statusHistory: IStatusHistory[] = [
+      {
+        status: "PENDING" as IStatusHistory["status"],
+        updatedAt: new Date().toISOString(),
+      },
+      ...(orderStatus === "CONFIRMED"
+        ? [
+            {
+              status: "CONFIRMED" as IStatusHistory["status"],
+              updatedAt: new Date().toISOString(),
+            },
+          ]
+        : []),
+    ];
+
+    // Create Payment document with payment status
+    const paymentDoc = await Payment.create(
+      [
+        {
+          order: undefined, // link after creating order
+          transactionId,
+          amount: total,
+          status: paymentStatus,
+          paymentMethod: payload.paymentMethod,
+        },
+      ],
+      { session }
+    );
+
+    // Create Order document
+    const orderDoc = await Order.create(
+      [
+        {
+          ...payload,
+          orderNumber,
+          orderItems: preparedItems,
+          subtotal: Number(subtotal.toFixed(2)),
+          deliveryFee,
+          tax,
+          tip,
+          discount,
+          total,
+          status: orderStatus,
+          statusHistory,
+          payment: paymentDoc[0]._id,
+        },
+      ],
+      { session }
+    );
+
+    // Update payment with order reference
+    await Payment.findByIdAndUpdate(
+      paymentDoc[0]._id,
+      { order: orderDoc[0]._id },
+      { session }
+    );
+
+    // If card payment, create Stripe payment intent and save its client_secret in extra data
+    let clientSecret: string | undefined;
+
+    if (payload.paymentMethod === PAYMENT_METHOD.CARD) {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(total * 100), // in cents
+        currency: "usd", // change if needed
+        metadata: { transactionId },
+        receipt_email: payload.customerEmail || undefined,
+      });
+
+      await Payment.findByIdAndUpdate(
+        paymentDoc[0]._id,
+        { transactionId: paymentIntent.id, status: PAYMENT_STATUS.PAID },
+        { new: true, runValidators: true, session }
+      );
+      clientSecret = paymentIntent.client_secret ?? undefined;
+    }
+
+    // After order creation, requery fresh order
+    const freshOrder = await Order.findById(orderDoc[0]._id).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      order: freshOrder ?? orderDoc[0],
+      payment: paymentDoc[0],
+      clientSecret,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
 };
-
-export const getOrders = async () => Order.find();
-export const getOrderById = async (id: string) => Order.findById(id);
-export const updateOrder = async (id: string, data: Partial<IOrder>) =>
-  Order.findByIdAndUpdate(id, data, { new: true });
-export const deleteOrder = async (id: string) => Order.findByIdAndDelete(id);

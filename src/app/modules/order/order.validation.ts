@@ -1,16 +1,32 @@
 import { z } from "zod";
 
-const orderItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  quantity: z.number().int().min(1),
-  price: z.number(),
+const orderTypeEnum = z.enum(["PICKUP", "DELIVERY"]);
+const orderStatusEnum = z.enum([
+  "PENDING",
+  "CONFIRMED",
+  "PREPARING",
+  "READY",
+  "OUT FOR DELIVERY",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+const orderItemZod = z.object({
+  menuItemId: z.string().min(1),
+  name: z.string().min(1),
   basePrice: z.number(),
-  category: z.string(),
-  imageUrl: z.string().url().optional(),
-  primaryOption: z.object({ name: z.string(), price: z.number() }),
+  quantity: z.number().int().min(1),
+  primaryOption: z.object({
+    name: z.string().min(1),
+    price: z.number(),
+  }),
   secondaryOptions: z
-    .array(z.object({ name: z.string(), price: z.number().optional() }))
+    .array(
+      z.object({
+        name: z.string(),
+        price: z.number().optional(),
+      })
+    )
     .optional(),
   addons: z
     .array(
@@ -21,49 +37,32 @@ const orderItemSchema = z.object({
       })
     )
     .optional(),
-  specialInstruction: z.string().optional(),
+  totalPrice: z.number(),
 });
 
-const statusHistorySchema = z.object({
-  name: z.enum([
-    "pending",
-    "confirmed",
-    "preparing",
-    "ready",
-    "out for delivery",
-    "completed",
-    "cancelled",
-  ]),
-  updatedAt: z.string(),
+const statusHistoryZod = z.object({
+  status: orderStatusEnum,
+  updatedAt: z.string(), // Could use z.date().transform((d)=>d.toISOString()) if Date
 });
 
 export const createOrderZodSchema = z.object({
-  customer_name: z.string().min(1),
-  customer_email: z.string().email().optional(),
-  customer_phone: z.string().min(1),
-  orderItems: z.array(orderItemSchema).min(1),
-  orderType: z.enum(["pickup", "delivery"]),
+  orderNumber: z.string().min(1),
+  customerName: z.string().min(1),
+  customerEmail: z.string().email().optional(),
+  customerPhone: z.string().min(1),
+  orderType: orderTypeEnum,
+  isScheduled: z.boolean(),
   deliveryAddress: z.string().optional(),
-  subTotal: z.number(),
+  orderItems: z.array(orderItemZod).min(1),
+  subtotal: z.number(),
   deliveryFee: z.number().optional(),
   tax: z.number(),
   tip: z.number().optional(),
   discount: z.number().optional(),
   total: z.number(),
-  status: z
-    .enum([
-      "pending",
-      "confirmed",
-      "preparing",
-      "ready",
-      "out for delivery",
-      "completed",
-      "cancelled",
-    ])
-    .optional()
-    .default("pending"),
-  statusHistory: z.array(statusHistorySchema).default([]),
-  couponUsed: z.string().optional(),
-  kitchenNote: z.string().optional(),
-  payment_method: z.enum(["card", "cash"]),
+  status: orderStatusEnum,
+  statusHistory: z.array(statusHistoryZod),
+  specialInstructions: z.string().optional(),
+  couponCode: z.string().optional(),
+  payment: z.string().optional(), // as ObjectId string
 });

@@ -1,82 +1,103 @@
-import { Schema, model, Document } from "mongoose";
-import { IOrder, IOrderItem, IStatusHistory } from "./order.interface";
+import { Schema, model, Types, Document } from "mongoose";
+import {
+  IOrder,
+  IOrderItem,
+  IStatusHistory,
+  OrderType,
+} from "./order.interface";
 
 const OrderItemSchema = new Schema<IOrderItem>(
   {
-    id: String,
-    name: String,
-    quantity: Number,
-    price: Number,
-    basePrice: Number,
-    category: String,
-    imageUrl: String,
-    primaryOption: { name: String, price: Number },
-    secondaryOptions: [{ name: String, price: Number }],
-    addons: [{ id: String, name: String, price: Number }],
-    specialInstruction: String,
+    menuItemId: {
+      type: Schema.Types.ObjectId,
+      ref: "MenuItem",
+      required: true,
+    },
+    name: { type: String, required: true },
+    basePrice: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    primaryOption: {
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+    },
+    secondaryOptions: [
+      {
+        name: String,
+        price: Number,
+      },
+    ],
+    addons: [
+      {
+        id: String,
+        name: String,
+        price: Number,
+      },
+    ],
+    totalPrice: { type: Number, required: true },
   },
   { _id: false }
 );
 
 const StatusHistorySchema = new Schema<IStatusHistory>(
   {
-    name: {
+    status: {
       type: String,
       enum: [
-        "pending",
-        "confirmed",
-        "preparing",
-        "ready",
-        "out for delivery",
-        "completed",
-        "cancelled",
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "READY",
+        "OUT FOR DELIVERY",
+        "COMPLETED",
+        "CANCELLED",
       ],
+      required: true,
     },
-    updatedAt: String,
+    updatedAt: { type: String, required: true },
   },
   { _id: false }
 );
 
-const OrderSchema = new Schema<IOrder>(
+const OrderSchema = new Schema<IOrder & Document>(
   {
-    customer_name: { type: String, required: true },
-    customer_email: { type: String },
-    customer_phone: { type: String, required: true },
-    orderItems: [OrderItemSchema],
-    orderType: { type: String, enum: ["pickup", "delivery"], required: true },
-    deliveryAddress: String,
-    subTotal: Number,
-    deliveryFee: Number,
-    tax: Number,
-    tip: Number,
-    discount: Number,
-    total: Number,
+    orderNumber: { type: String, required: true, unique: true },
+    customerName: { type: String, required: true },
+    customerEmail: { type: String },
+    customerPhone: { type: String, required: true },
+    orderType: {
+      type: String,
+      enum: Object.values(OrderType),
+      required: true,
+    },
+    isScheduled: { type: Boolean, required: true },
+    deliveryAddress: { type: String },
+    orderItems: { type: [OrderItemSchema], required: true },
+    subtotal: { type: Number, required: true },
+    deliveryFee: { type: Number },
+    tax: { type: Number, required: true },
+    tip: { type: Number },
+    discount: { type: Number },
+    total: { type: Number, required: true },
     status: {
       type: String,
       enum: [
-        "pending",
-        "confirmed",
-        "preparing",
-        "ready",
-        "out for delivery",
-        "completed",
-        "cancelled",
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "READY",
+        "OUT FOR DELIVERY",
+        "COMPLETED",
+        "CANCELLED",
       ],
-      default: "pending",
+      required: true,
+      default: "PENDING",
     },
-    statusHistory: [StatusHistorySchema],
-    couponUsed: String,
-    kitchenNote: String,
-    payment_method: { type: String, enum: ["card", "cash"], required: true },
-    payment_status: {
-      type: String,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
-    },
-    stripe_payment_intent_id: String,
-    createdAt: { type: Date, default: Date.now },
+    statusHistory: { type: [StatusHistorySchema], default: [] },
+    specialInstructions: { type: String },
+    couponCode: { type: String },
+    payment: { type: Types.ObjectId, ref: "Payment" },
   },
   { timestamps: true, versionKey: false }
 );
 
-export const Order = model<IOrder>("Order", OrderSchema);
+export const Order = model<IOrder & Document>("Order", OrderSchema);

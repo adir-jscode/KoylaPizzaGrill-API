@@ -1,55 +1,57 @@
+import { Types } from "mongoose";
+
 export interface IOrderItem {
-  id: string;
+  id?: string;
+  menuItemId: Types.ObjectId;
   name: string;
-  quantity: number;
-  price: number;
   basePrice: number;
-  category: string;
-  imageUrl: string;
+  quantity: number;
   primaryOption: { name: string; price: number };
   secondaryOptions?: { name: string; price?: number }[];
   addons?: { id: string; name: string; price?: number }[];
-  specialInstruction?: string;
+  totalPrice: number;
 }
 
 export interface IStatusHistory {
-  name:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out for delivery"
-    | "completed"
-    | "cancelled";
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "PREPARING"
+    | "READY"
+    | "OUT FOR DELIVERY"
+    | "COMPLETED"
+    | "CANCELLED";
   updatedAt: string;
 }
 
+export enum OrderType {
+  PICKUP = "PICKUP",
+  DELIVERY = "DELIVERY",
+}
+export enum PAYMENT_METHOD {
+  CARD = "CARD",
+  CASH = "CASH",
+}
+
 export interface IOrder {
-  customer_name: string;
-  customer_email?: string;
-  customer_phone: string;
-  orderItems: IOrderItem[];
-  orderType: "pickup" | "delivery";
+  orderNumber: string; // custom id- KPG-currentDateTime
+  customerName: string;
+  customerEmail?: string;
+  customerPhone: string;
+  orderType: OrderType;
+  isScheduled: boolean;
   deliveryAddress?: string;
-  subTotal: number;
+  orderItems: IOrderItem[];
+  subtotal: number;
   deliveryFee?: number;
   tax: number;
   tip?: number;
   discount?: number;
   total: number;
-  status:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out for delivery"
-    | "completed"
-    | "cancelled";
+  status: IStatusHistory["status"];
   statusHistory: IStatusHistory[];
-  couponUsed?: string;
-  kitchenNote?: string;
-  payment_method: "card" | "cash";
-  payment_status?: "pending" | "paid" | "failed";
-  stripe_payment_intent_id?: string;
-  createdAt?: string;
+  specialInstructions?: string;
+  couponCode?: string;
+  payment?: Types.ObjectId;
+  paymentMethod: PAYMENT_METHOD;
 }

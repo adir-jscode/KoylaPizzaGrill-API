@@ -1,113 +1,37 @@
 import { Request, Response, NextFunction } from "express";
-import * as OrderService from "./order.service";
+import { createOrder } from "./order.service";
 import httpStatus from "http-status-codes";
-// Stripe webhook handler
-import { stripe } from "../../config/stripe";
+import { sendResponse } from "../../utils/sendResponse";
 
-export const createOrder = async (
+export const createOrderController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const order = await OrderService.createOrder(req.body);
-    res.status(httpStatus.CREATED).json({ success: true, data: order });
-  } catch (err) {
-    next(err);
-  }
-};
+    const payload = req.body;
 
-export const createStripeIntent = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-    const clientSecret = await OrderService.createStripePaymentIntent(id);
-    res.status(200).json({ success: true, clientSecret });
-  } catch (err) {
-    next(err);
-  }
-};
+    if (!payload.paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: "paymentMethod is required in the payload (CARD or CASH)",
+      });
+    }
 
-export const getOrders = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const orders = await OrderService.getOrders();
-    res.status(200).json({ success: true, data: orders });
-  } catch (err) {
-    next(err);
-  }
-};
+    const result = await createOrder(payload); // your service function
 
-export const getOrderById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const order = await OrderService.getOrderById(req.params.id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    res.status(200).json({ success: true, data: order });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const updateOrder = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const updated = await OrderService.updateOrder(req.params.id, req.body);
-    if (!updated)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    res.status(200).json({ success: true, data: updated });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const deleteOrder = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const deleted = await OrderService.deleteOrder(req.params.id);
-    if (!deleted)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    res
-      .status(200)
-      .json({ success: true, message: "Order deleted successfully" });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const stripeWebhook = async (req: Request, res: Response) => {
-  const sig = req.headers["stripe-signature"] as string;
-  try {
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET as string
-    );
-    await OrderService.handleStripeWebhook(event);
-    res.json({ received: true });
-  } catch (err: any) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    // Return order, payment, and Stripe client secret if exists
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.CREATED,
+      message: "Order created successfully",
+      data: {
+        order: result.order,
+        payment: result.payment,
+        clientSecret: result.clientSecret, // will be undefined for cash payments
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };
