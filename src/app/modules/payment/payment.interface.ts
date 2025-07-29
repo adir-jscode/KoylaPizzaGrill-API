@@ -11,6 +11,7 @@ export enum PAYMENT_STATUS {
 export interface IPayment {
   order: Types.ObjectId;
   transactionId: string;
+  paymentIntentId?: string;
   amount: number;
   paymentGatewayData?: any;
   invoiceUrl?: string;

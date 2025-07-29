@@ -8,7 +8,7 @@ const createRestaurantSettings = async (payload: IRestaurantSettings) => {
   return created;
 };
 const getSettings = async () => {
-  const settings = await RestaurantSettings.findOne();
+  const settings = await RestaurantSettings.find({});
   return settings;
 };
 const updateSettings = async (data: Partial<IRestaurantSettings>) => {

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePaymentOrderStatus = exports.createOrder = void 0;
+exports.changeOrderStatus = exports.getAllOrder = exports.orderHistoryById = exports.updatePaymentOrderStatus = exports.createOrder = void 0;
 const stripe_1 = require("../../config/stripe");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const coupons_interface_1 = require("../coupons/coupons.interface");
@@ -30,7 +30,7 @@ const generateOrderNumber = () => {
     return `KPG-${Date.now()}`;
 };
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     const transactionId = getTransactionId();
     const session = yield order_model_1.Order.startSession();
     session.startTransaction();
@@ -132,45 +132,60 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 ]
                 : []),
         ];
-        // Create Payment document with payment status
-        const paymentDoc = yield payment_model_1.Payment.create([
+        // Prepare Payment doc
+        const paymentDocArr = yield payment_model_1.Payment.create([
             {
-                order: null, // link after creating order
-                transactionId,
+                order: undefined, // will link after
+                transactionId, // temp
                 amount: total,
                 status: paymentStatus,
                 paymentMethod: payload.paymentMethod,
             },
         ], { session });
-        // Create Order document
-        const orderDoc = yield order_model_1.Order.create([
+        let paymentDoc = paymentDocArr[0];
+        // Create Order doc
+        const orderDocArr = yield order_model_1.Order.create([
             Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
                 tax,
                 tip,
                 discount,
-                total, status: orderStatus, statusHistory, payment: paymentDoc[0]._id }),
+                total, status: orderStatus, statusHistory, payment: paymentDoc._id }),
         ], { session });
-        // Update payment with order reference
-        yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc[0]._id, { order: orderDoc[0]._id }, { new: true, runValidators: true, session });
-        // If card payment, create Stripe payment intent and save its client_secret in extra data
-        let clientSecret;
+        let orderDoc = orderDocArr[0];
+        // Link payment -> order
+        yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
+        // Stripe PaymentIntent Logic
+        let clientSecret = undefined;
+        let updatedPaymentDoc = paymentDoc;
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD) {
             const paymentIntent = yield stripe_1.stripe.paymentIntents.create({
-                amount: Math.round(total * 100), // in cents
-                currency: "usd", // change if needed
+                amount: Math.round(total * 100),
+                currency: "usd",
+                payment_method_types: ["card"],
                 metadata: { transactionId },
                 receipt_email: payload.customerEmail || undefined,
             });
-            yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc[0]._id, { transactionId: paymentIntent.id, status: payment_interface_1.PAYMENT_STATUS.PAID }, { new: true, runValidators: true, session });
+            const updatedPayment = yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, {
+                transactionId: transactionId,
+                paymentIntentId: paymentIntent.id,
+                status: payment_interface_1.PAYMENT_STATUS.UNPAID,
+            }, { new: true, session });
+            if (!updatedPayment) {
+                throw new Error("Failed to update payment document with PaymentIntent info");
+            }
+            updatedPaymentDoc = updatedPayment;
             clientSecret = (_j = paymentIntent.client_secret) !== null && _j !== void 0 ? _j : undefined;
         }
-        // After order creation, requery fresh order
-        const freshOrder = yield order_model_1.Order.findById(orderDoc[0]._id).session(session);
+        // Commit and close session **before reading order again**
         yield session.commitTransaction();
         session.endSession();
+        // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
+        const latestOrder = yield order_model_1.Order.findById(orderDoc._id);
+        const latestPayment = yield payment_model_1.Payment.findById(paymentDoc._id);
+        // Return freshest docs
         return {
-            order: freshOrder !== null && freshOrder !== void 0 ? freshOrder : orderDoc[0],
-            payment: paymentDoc[0],
+            order: latestOrder !== null && latestOrder !== void 0 ? latestOrder : orderDoc,
+            payment: (_k = latestPayment !== null && latestPayment !== void 0 ? latestPayment : updatedPaymentDoc) !== null && _k !== void 0 ? _k : paymentDoc,
             clientSecret,
         };
     }
@@ -187,6 +202,10 @@ const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, 
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
     }
     order.status = "CONFIRMED";
+    order.statusHistory.push({
+        status: "CONFIRMED",
+        updatedAt: new Date().toISOString(),
+    });
     order.save();
     const payment = yield payment_model_1.Payment.findById(order.payment);
     if (!payment) {
@@ -197,3 +216,51 @@ const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, 
     return payment;
 });
 exports.updatePaymentOrderStatus = updatePaymentOrderStatus;
+const orderHistoryById = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.Order.findById(orderId);
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
+    }
+    const sortedStatusHistory = order.statusHistory
+        .slice()
+        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+    return {
+        orderNumber: order.orderNumber,
+        statusHistory: sortedStatusHistory,
+    };
+});
+exports.orderHistoryById = orderHistoryById;
+const getAllOrder = () => __awaiter(void 0, void 0, void 0, function* () {
+    const orders = yield order_model_1.Order.find({});
+    return orders;
+});
+exports.getAllOrder = getAllOrder;
+const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.Order.findById(orderId);
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
+    }
+    if (payload.status === "CONFIRMED") {
+        order.status = payload.status;
+        order.statusHistory.push({
+            status: payload.status,
+            updatedAt: new Date().toISOString(),
+        });
+        const payment = yield payment_model_1.Payment.findById(order.payment);
+        if (!payment) {
+            throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment not received");
+        }
+        payment.status = payment_interface_1.PAYMENT_STATUS.PAID;
+        payment.save();
+    }
+    else {
+        order.status = payload.status;
+        order.statusHistory.push({
+            status: payload.status,
+            updatedAt: new Date().toISOString(),
+        });
+    }
+    order.save();
+    return { order: order.statusHistory };
+});
+exports.changeOrderStatus = changeOrderStatus;

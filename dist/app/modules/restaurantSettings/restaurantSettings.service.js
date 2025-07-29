@@ -21,7 +21,7 @@ const createRestaurantSettings = (payload) => __awaiter(void 0, void 0, void 0, 
     return created;
 });
 const getSettings = () => __awaiter(void 0, void 0, void 0, function* () {
-    const settings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
+    const settings = yield restaurantSettings_model_1.RestaurantSettings.find({});
     return settings;
 });
 const updateSettings = (data) => __awaiter(void 0, void 0, void 0, function* () {

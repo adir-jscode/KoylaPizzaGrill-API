@@ -1,7 +1,7 @@
 import { Schema, model, Types, Document } from "mongoose";
 import { IPayment, PAYMENT_STATUS } from "./payment.interface";
 
-const PaymentSchema = new Schema<IPayment & Document>(
+const PaymentSchema = new Schema<IPayment>(
   {
     order: {
       type: Schema.Types.ObjectId,
@@ -9,6 +9,7 @@ const PaymentSchema = new Schema<IPayment & Document>(
       unique: true,
     },
     transactionId: { type: String, required: true },
+    paymentIntentId: { type: String },
     amount: { type: Number, required: true },
     paymentGatewayData: { type: Schema.Types.Mixed },
     invoiceUrl: { type: String },
@@ -22,4 +23,4 @@ const PaymentSchema = new Schema<IPayment & Document>(
   { timestamps: true, versionKey: false }
 );
 
-export const Payment = model<IPayment & Document>("Payment", PaymentSchema);
+export const Payment = model<IPayment>("Payment", PaymentSchema);

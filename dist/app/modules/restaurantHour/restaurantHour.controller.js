@@ -49,8 +49,6 @@ exports.getAllHours = getAllHours;
 const getHourByDay = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const hour = yield restaurantHour_service_1.RestaurantHourService.getByDay(Number(req.params.day));
-        if (!hour)
-            return res.status(404).json({ success: false, message: "Not found" });
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,

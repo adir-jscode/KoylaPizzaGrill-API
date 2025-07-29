@@ -3,7 +3,7 @@ import AppError from "../../errorHelpers/AppError";
 import { Type } from "../coupons/coupons.interface";
 import { Coupon } from "../coupons/coupons.model";
 import { MenuItem } from "../menuItem/menuItem.model";
-import { PAYMENT_STATUS } from "../payment/payment.interface";
+import { IPayment, PAYMENT_STATUS } from "../payment/payment.interface";
 import { Payment } from "../payment/payment.model";
 import {
   IOrder,
@@ -168,12 +168,12 @@ export const createOrder = async (
         : []),
     ];
 
-    // Create Payment document with payment status
-    const paymentDoc = await Payment.create(
+    // Prepare Payment doc
+    const paymentDocArr = await Payment.create(
       [
         {
-          order: null, // link after creating order
-          transactionId,
+          order: undefined, // will link after
+          transactionId, // temp
           amount: total,
           status: paymentStatus,
           paymentMethod: payload.paymentMethod,
@@ -181,9 +181,10 @@ export const createOrder = async (
       ],
       { session }
     );
+    let paymentDoc = paymentDocArr[0];
 
-    // Create Order document
-    const orderDoc = await Order.create(
+    // Create Order doc
+    const orderDocArr = await Order.create(
       [
         {
           ...payload,
@@ -197,47 +198,65 @@ export const createOrder = async (
           total,
           status: orderStatus,
           statusHistory,
-          payment: paymentDoc[0]._id,
+          payment: paymentDoc._id,
         },
       ],
       { session }
     );
+    let orderDoc = orderDocArr[0];
 
-    // Update payment with order reference
+    // Link payment -> order
     await Payment.findByIdAndUpdate(
-      paymentDoc[0]._id,
-      { order: orderDoc[0]._id },
-      { new: true, runValidators: true, session }
+      paymentDoc._id,
+      { order: orderDoc._id },
+      { session }
     );
 
-    // If card payment, create Stripe payment intent and save its client_secret in extra data
-    let clientSecret: string | undefined;
+    // Stripe PaymentIntent Logic
+    let clientSecret: string | undefined = undefined;
+    let updatedPaymentDoc = paymentDoc;
 
     if (payload.paymentMethod === PAYMENT_METHOD.CARD) {
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(total * 100), // in cents
-        currency: "usd", // change if needed
+        amount: Math.round(total * 100),
+        currency: "usd",
+        payment_method_types: ["card"],
         metadata: { transactionId },
         receipt_email: payload.customerEmail || undefined,
       });
 
-      await Payment.findByIdAndUpdate(
-        paymentDoc[0]._id,
-        { transactionId: paymentIntent.id, status: PAYMENT_STATUS.PAID },
-        { new: true, runValidators: true, session }
+      const updatedPayment = await Payment.findByIdAndUpdate(
+        paymentDoc._id,
+        {
+          transactionId: transactionId,
+          paymentIntentId: paymentIntent.id,
+          status: PAYMENT_STATUS.UNPAID,
+        },
+        { new: true, session }
       );
+
+      if (!updatedPayment) {
+        throw new Error(
+          "Failed to update payment document with PaymentIntent info"
+        );
+      }
+
+      updatedPaymentDoc = updatedPayment;
       clientSecret = paymentIntent.client_secret ?? undefined;
     }
 
-    // After order creation, requery fresh order
-    const freshOrder = await Order.findById(orderDoc[0]._id).session(session);
-
+    // Commit and close session **before reading order again**
     await session.commitTransaction();
     session.endSession();
 
+    // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
+    const latestOrder = await Order.findById(orderDoc._id);
+    const latestPayment = await Payment.findById(paymentDoc._id);
+
+    // Return freshest docs
     return {
-      order: freshOrder ?? orderDoc[0],
-      payment: paymentDoc[0],
+      order: latestOrder ?? orderDoc,
+      payment: latestPayment ?? updatedPaymentDoc ?? paymentDoc,
       clientSecret,
     };
   } catch (error) {
@@ -253,6 +272,10 @@ export const updatePaymentOrderStatus = async (orderId: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
   }
   order.status = "CONFIRMED";
+  order.statusHistory.push({
+    status: "CONFIRMED",
+    updatedAt: new Date().toISOString(),
+  });
   order.save();
   const payment = await Payment.findById(order.payment);
   if (!payment) {
@@ -261,4 +284,59 @@ export const updatePaymentOrderStatus = async (orderId: string) => {
   payment.status = PAYMENT_STATUS.PAID;
   payment.save();
   return payment;
+};
+
+export const orderHistoryById = async (orderId: string) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
+  }
+  const sortedStatusHistory = order.statusHistory
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+    );
+  return {
+    orderNumber: order.orderNumber,
+    statusHistory: sortedStatusHistory,
+  };
+};
+
+export const getAllOrder = async () => {
+  const orders = await Order.find({});
+  return orders;
+};
+
+export const changeOrderStatus = async (
+  orderId: string,
+  payload: IStatusHistory
+) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
+  }
+  if (payload.status === "CONFIRMED") {
+    order.status = payload.status;
+
+    order.statusHistory.push({
+      status: payload.status,
+      updatedAt: new Date().toISOString(),
+    });
+    const payment = await Payment.findById(order.payment);
+    if (!payment) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Payment not received");
+    }
+    payment.status = PAYMENT_STATUS.PAID;
+    payment.save();
+  } else {
+    order.status = payload.status;
+    order.statusHistory.push({
+      status: payload.status,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  order.save();
+  return { order: order.statusHistory };
 };

@@ -13,6 +13,7 @@ const paymentStatusEnum = zod_1.z.enum([
 exports.createPaymentZodSchema = zod_1.z.object({
     order: zod_1.z.string().min(1), // as ObjectId string
     transactionId: zod_1.z.string().min(1),
+    paymentIntentId: zod_1.z.string().min(1).optional(),
     amount: zod_1.z.number(),
     paymentGatewayData: zod_1.z.any().optional(),
     invoiceUrl: zod_1.z.string().url().optional(),

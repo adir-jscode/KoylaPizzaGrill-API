@@ -32,6 +32,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrderRoutes = void 0;
 const express_1 = require("express");
@@ -39,7 +42,12 @@ const orderController = __importStar(require("./order.controller"));
 const validateRequest_1 = require("../../middlewares/validateRequest");
 const order_validation_1 = require("./order.validation");
 const checkAuth_1 = require("../../middlewares/checkAuth");
+const express_2 = __importDefault(require("express"));
 const router = (0, express_1.Router)();
 router.post("/", (0, validateRequest_1.validateRequest)(order_validation_1.createOrderZodSchema), orderController.createOrderController);
-router.patch("/:id", checkAuth_1.checkAuth, orderController.changePaymentOrderStatus);
+router.get("/", checkAuth_1.checkAuth, orderController.getAllOrders);
+// router.patch("/:id", checkAuth, orderController.changePaymentOrderStatus);
+router.post("/stripe/webhook", express_2.default.raw({ type: "application/json" }), orderController.stripeWebhookHandler);
+router.get("/history/:id", checkAuth_1.checkAuth, orderController.getOrderHistory);
+router.put("/:id", checkAuth_1.checkAuth, orderController.toggleOrderStatus);
 exports.OrderRoutes = router;

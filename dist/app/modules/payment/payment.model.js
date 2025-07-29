@@ -10,6 +10,7 @@ const PaymentSchema = new mongoose_1.Schema({
         unique: true,
     },
     transactionId: { type: String, required: true },
+    paymentIntentId: { type: String },
     amount: { type: Number, required: true },
     paymentGatewayData: { type: mongoose_1.Schema.Types.Mixed },
     invoiceUrl: { type: String },
