@@ -18,6 +18,7 @@ interface EnvConfig {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES: string;
   FRONTEND_URL: string;
+  VERCEL_URL: string;
 }
 const loadEnviromentVariables = (): EnvConfig => {
   const requiredEnvVariables: string[] = [
@@ -36,6 +37,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     "JWT_REFRESH_SECRET",
     "JWT_REFRESH_EXPIRES",
     "FRONTEND_URL",
+    "VERCEL_URL",
   ];
 
   requiredEnvVariables.forEach((key) => {
@@ -60,6 +62,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET as string,
     JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES as string,
     FRONTEND_URL: process.env.FRONTEND_URL as string,
+    VERCEL_URL: process.env.VERCEL_URL as string,
   };
 };
 export const envVars: EnvConfig = loadEnviromentVariables();

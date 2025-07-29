@@ -14,14 +14,14 @@ const getCategories = async () => {
 const getCategoryById = async (id: string) => {
   const categoryById = await Category.findById(id);
   if (!categoryById) {
-    throw new AppError(httpStatus.NOT_FOUND, "Category not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Category not found");
   }
   return categoryById;
 };
 const updateCategory = async (id: string, data: Partial<ICategory>) => {
   const isCategoryExists = await Category.findById(id);
   if (!isCategoryExists) {
-    throw new AppError(httpStatus.NOT_FOUND, "Category not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Category not found");
   }
   const updated = await Category.findByIdAndUpdate(id, data, {
     new: true,
@@ -33,7 +33,7 @@ const updateCategory = async (id: string, data: Partial<ICategory>) => {
 const deleteCategory = async (id: string) => {
   const isCategoryExists = await Category.findById(id);
   if (!isCategoryExists) {
-    throw new AppError(httpStatus.NOT_FOUND, "Category not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Category not found");
   }
   await Category.findByIdAndDelete(id);
 };

@@ -27,14 +27,14 @@ const getCategories = () => __awaiter(void 0, void 0, void 0, function* () {
 const getCategoryById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const categoryById = yield categories_model_1.Category.findById(id);
     if (!categoryById) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Category not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Category not found");
     }
     return categoryById;
 });
 const updateCategory = (id, data) => __awaiter(void 0, void 0, void 0, function* () {
     const isCategoryExists = yield categories_model_1.Category.findById(id);
     if (!isCategoryExists) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Category not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Category not found");
     }
     const updated = yield categories_model_1.Category.findByIdAndUpdate(id, data, {
         new: true,
@@ -45,7 +45,7 @@ const updateCategory = (id, data) => __awaiter(void 0, void 0, void 0, function*
 const deleteCategory = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const isCategoryExists = yield categories_model_1.Category.findById(id);
     if (!isCategoryExists) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Category not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Category not found");
     }
     yield categories_model_1.Category.findByIdAndDelete(id);
 });

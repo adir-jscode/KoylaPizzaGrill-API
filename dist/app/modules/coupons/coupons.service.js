@@ -27,7 +27,7 @@ const getAllCoupons = () => __awaiter(void 0, void 0, void 0, function* () {
 const updateCouponStatus = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const isCouponExist = yield coupons_model_1.Coupon.findById(id);
     if (!isCouponExist) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Coupon not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon not found");
     }
     else {
         const newUpdatedCoupon = yield coupons_model_1.Coupon.findByIdAndUpdate(id, payload, {
@@ -39,7 +39,7 @@ const updateCouponStatus = (id, payload) => __awaiter(void 0, void 0, void 0, fu
 const updateCoupon = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const isCouponExist = yield coupons_model_1.Coupon.findById(id);
     if (!isCouponExist) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Coupon not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon not found");
     }
     else {
         const newUpdatedCoupon = yield coupons_model_1.Coupon.findByIdAndUpdate(id, payload, {
@@ -52,7 +52,7 @@ const updateCoupon = (id, payload) => __awaiter(void 0, void 0, void 0, function
 const deleteCoupon = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const isCouponExist = yield coupons_model_1.Coupon.findById(id);
     if (!isCouponExist) {
-        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Coupon not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon not found");
     }
     else {
         yield coupons_model_1.Coupon.findByIdAndDelete(id);

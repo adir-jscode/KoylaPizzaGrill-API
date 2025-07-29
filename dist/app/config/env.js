@@ -23,6 +23,7 @@ const loadEnviromentVariables = () => {
         "JWT_REFRESH_SECRET",
         "JWT_REFRESH_EXPIRES",
         "FRONTEND_URL",
+        "VERCEL_URL",
     ];
     requiredEnvVariables.forEach((key) => {
         if (!process.env[key]) {
@@ -45,6 +46,7 @@ const loadEnviromentVariables = () => {
         JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
         JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES,
         FRONTEND_URL: process.env.FRONTEND_URL,
+        VERCEL_URL: process.env.VERCEL_URL,
     };
 };
 exports.envVars = loadEnviromentVariables();

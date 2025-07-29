@@ -16,7 +16,7 @@ const getAllCoupons = async () => {
 const updateCouponStatus = async (id: string, payload: Partial<ICoupon>) => {
   const isCouponExist = await Coupon.findById(id);
   if (!isCouponExist) {
-    throw new AppError(httpStatus.NOT_FOUND, "Coupon not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Coupon not found");
   } else {
     const newUpdatedCoupon = await Coupon.findByIdAndUpdate(id, payload, {
       new: true,
@@ -29,7 +29,7 @@ const updateCouponStatus = async (id: string, payload: Partial<ICoupon>) => {
 const updateCoupon = async (id: string, payload: Partial<ICoupon>) => {
   const isCouponExist = await Coupon.findById(id);
   if (!isCouponExist) {
-    throw new AppError(httpStatus.NOT_FOUND, "Coupon not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Coupon not found");
   } else {
     const newUpdatedCoupon = await Coupon.findByIdAndUpdate(id, payload, {
       new: true,
@@ -43,7 +43,7 @@ const updateCoupon = async (id: string, payload: Partial<ICoupon>) => {
 const deleteCoupon = async (id: string) => {
   const isCouponExist = await Coupon.findById(id);
   if (!isCouponExist) {
-    throw new AppError(httpStatus.NOT_FOUND, "Coupon not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Coupon not found");
   } else {
     await Coupon.findByIdAndDelete(id);
   }
