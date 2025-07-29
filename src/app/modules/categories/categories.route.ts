@@ -15,8 +15,8 @@ router.post(
   validateRequest(createCategoryZodSchema),
   CategoriesController.createCategory
 );
-router.get("/", checkAuth, CategoriesController.getCategories);
-router.get("/:id", checkAuth, CategoriesController.getCategoryById);
+router.get("/", CategoriesController.getCategories);
+router.get("/:id", CategoriesController.getCategoryById);
 router.put(
   "/:id",
   checkAuth,

@@ -11,8 +11,8 @@ router.post(
   validateRequest(restaurantHourZodSchema),
   ctrl.createRestaurantHour
 );
-router.get("/", checkAuth, ctrl.getAllHours);
-router.get("/:day", checkAuth, ctrl.getHourByDay);
+router.get("/", ctrl.getAllHours);
+router.get("/:day", ctrl.getHourByDay);
 router.put(
   "/:day",
   checkAuth,

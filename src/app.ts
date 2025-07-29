@@ -11,10 +11,11 @@ app.set("trust proxy", 1);
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: [envVars.FRONTEND_URL, envVars.VERCEL_URL],
+    origin: true,
     credentials: true,
   })
 );
+console.log();
 
 app.use("/api/v1", router);
 
