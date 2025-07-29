@@ -14,6 +14,8 @@ import {
 } from "./order.interface";
 import { Order } from "./order.model";
 import httpStatus from "http-status-codes";
+import { startOfDay, endOfDay, parseISO } from "date-fns";
+import { FilterQuery } from "mongoose";
 
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -303,8 +305,50 @@ export const orderHistoryById = async (orderId: string) => {
   };
 };
 
-export const getAllOrder = async () => {
-  const orders = await Order.find({});
+export const getAllOrder = async (query: Record<string, string>) => {
+  const orders = await Order.find(query);
+  return orders;
+};
+export const filteredOrders = async (query: Record<string, string>) => {
+  const filter: FilterQuery<typeof Order> = {};
+
+  // Parse date filters if provided
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (query.startDate) {
+    startDate = startOfDay(parseISO(query.startDate));
+  }
+  if (query.endDate) {
+    endDate = endOfDay(parseISO(query.endDate));
+  }
+
+  if (startDate && endDate) {
+    filter.createdAt = { $gte: startDate, $lte: endDate };
+  } else if (startDate) {
+    filter.createdAt = { $gte: startDate };
+  } else if (endDate) {
+    filter.createdAt = { $lte: endDate };
+  } else {
+    // No dates passed, filter for today by default
+    filter.createdAt = {
+      $gte: startOfDay(new Date()),
+      $lte: endOfDay(new Date()),
+    };
+  }
+
+  // Optional: additional filters
+  if (query.status) {
+    filter.status = query.status.toUpperCase(); // assuming stored as uppercase
+  }
+  if (query.customerName) {
+    // Case-insensitive partial match
+    filter.customerName = { $regex: query.customerName, $options: "i" };
+  }
+
+  // Fetch and sort descending by creation
+  const orders = await Order.find(filter).sort({ createdAt: -1 });
+
   return orders;
 };
 

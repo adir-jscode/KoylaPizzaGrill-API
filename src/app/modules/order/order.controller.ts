@@ -5,6 +5,7 @@ import {
   updatePaymentOrderStatus,
   getAllOrder,
   changeOrderStatus,
+  filteredOrders,
 } from "./order.service";
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
@@ -53,15 +54,32 @@ export const getAllOrders = async (
   next: NextFunction
 ) => {
   try {
-    const orders = await getAllOrder();
+    const orders = await getAllOrder(req.query as Record<string, string>);
     sendResponse(res, {
       success: true,
-      statusCode: httpStatus.CREATED,
+      statusCode: httpStatus.OK,
       message: "All data retrived successfully",
       data: orders,
     });
   } catch (error) {
     next(error);
+  }
+};
+export const getFilteredOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orders = await filteredOrders(req.query as Record<string, string>);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "All data retrived successfully",
+      data: orders,
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
