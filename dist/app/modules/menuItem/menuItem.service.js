@@ -22,7 +22,8 @@ const createMenuItem = (payload) => __awaiter(void 0, void 0, void 0, function* 
     return created;
 });
 const getMenuItems = () => __awaiter(void 0, void 0, void 0, function* () {
-    return menuItem_model_1.MenuItem.find().populate("categoryId");
+    const menuItems = yield menuItem_model_1.MenuItem.find({});
+    return menuItems;
 });
 const getMenuItemById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const menuItem = yield menuItem_model_1.MenuItem.findById(id).populate("categoryId");

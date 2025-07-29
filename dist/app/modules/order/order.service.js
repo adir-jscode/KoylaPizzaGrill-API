@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeOrderStatus = exports.getAllOrder = exports.orderHistoryById = exports.updatePaymentOrderStatus = exports.createOrder = void 0;
+exports.changeOrderStatus = exports.filteredOrders = exports.getAllOrder = exports.orderHistoryById = exports.updatePaymentOrderStatus = exports.createOrder = void 0;
 const stripe_1 = require("../../config/stripe");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const coupons_interface_1 = require("../coupons/coupons.interface");
@@ -23,6 +23,7 @@ const payment_model_1 = require("../payment/payment.model");
 const order_interface_1 = require("./order.interface");
 const order_model_1 = require("./order.model");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
+const date_fns_1 = require("date-fns");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
@@ -230,11 +231,51 @@ const orderHistoryById = (orderId) => __awaiter(void 0, void 0, void 0, function
     };
 });
 exports.orderHistoryById = orderHistoryById;
-const getAllOrder = () => __awaiter(void 0, void 0, void 0, function* () {
-    const orders = yield order_model_1.Order.find({});
+const getAllOrder = (query) => __awaiter(void 0, void 0, void 0, function* () {
+    const orders = yield order_model_1.Order.find(query);
     return orders;
 });
 exports.getAllOrder = getAllOrder;
+const filteredOrders = (query) => __awaiter(void 0, void 0, void 0, function* () {
+    const filter = {};
+    // Parse date filters if provided
+    let startDate;
+    let endDate;
+    if (query.startDate) {
+        startDate = (0, date_fns_1.startOfDay)((0, date_fns_1.parseISO)(query.startDate));
+    }
+    if (query.endDate) {
+        endDate = (0, date_fns_1.endOfDay)((0, date_fns_1.parseISO)(query.endDate));
+    }
+    if (startDate && endDate) {
+        filter.createdAt = { $gte: startDate, $lte: endDate };
+    }
+    else if (startDate) {
+        filter.createdAt = { $gte: startDate };
+    }
+    else if (endDate) {
+        filter.createdAt = { $lte: endDate };
+    }
+    else {
+        // No dates passed, filter for today by default
+        filter.createdAt = {
+            $gte: (0, date_fns_1.startOfDay)(new Date()),
+            $lte: (0, date_fns_1.endOfDay)(new Date()),
+        };
+    }
+    // Optional: additional filters
+    if (query.status) {
+        filter.status = query.status.toUpperCase(); // assuming stored as uppercase
+    }
+    if (query.customerName) {
+        // Case-insensitive partial match
+        filter.customerName = { $regex: query.customerName, $options: "i" };
+    }
+    // Fetch and sort descending by creation
+    const orders = yield order_model_1.Order.find(filter).sort({ createdAt: -1 });
+    return orders;
+});
+exports.filteredOrders = filteredOrders;
 const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const order = yield order_model_1.Order.findById(orderId);
     if (!order) {

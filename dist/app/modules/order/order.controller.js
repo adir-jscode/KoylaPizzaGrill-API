@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toggleOrderStatus = exports.getOrderHistory = exports.stripeWebhookHandler = exports.changePaymentOrderStatus = exports.getAllOrders = exports.createOrderController = void 0;
+exports.toggleOrderStatus = exports.getOrderHistory = exports.stripeWebhookHandler = exports.changePaymentOrderStatus = exports.getFilteredOrders = exports.getAllOrders = exports.createOrderController = void 0;
 const order_service_1 = require("./order.service");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const sendResponse_1 = require("../../utils/sendResponse");
@@ -46,10 +46,10 @@ const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void
 exports.createOrderController = createOrderController;
 const getAllOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const orders = yield (0, order_service_1.getAllOrder)();
+        const orders = yield (0, order_service_1.getAllOrder)(req.query);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
-            statusCode: http_status_codes_1.default.CREATED,
+            statusCode: http_status_codes_1.default.OK,
             message: "All data retrived successfully",
             data: orders,
         });
@@ -59,6 +59,21 @@ const getAllOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.getAllOrders = getAllOrders;
+const getFilteredOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const orders = yield (0, order_service_1.filteredOrders)(req.query);
+        (0, sendResponse_1.sendResponse)(res, {
+            success: true,
+            statusCode: http_status_codes_1.default.OK,
+            message: "Data filtered successfully",
+            data: orders,
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+});
+exports.getFilteredOrders = getFilteredOrders;
 const changePaymentOrderStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const paymentInfo = yield (0, order_service_1.updatePaymentOrderStatus)(req.params.id);
