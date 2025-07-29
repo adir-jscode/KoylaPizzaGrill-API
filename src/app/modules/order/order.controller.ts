@@ -75,7 +75,7 @@ export const getFilteredOrders = async (
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "All data retrived successfully",
+      message: "Data filtered successfully",
       data: orders,
     });
   } catch (err) {

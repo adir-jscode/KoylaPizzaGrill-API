@@ -21,5 +21,5 @@ router.post(
 
 router.get("/history/:id", checkAuth, orderController.getOrderHistory);
 router.put("/:id", checkAuth, orderController.toggleOrderStatus);
-router.get("/", checkAuth, orderController.getFilteredOrders);
+router.get("/filter", checkAuth, orderController.getFilteredOrders);
 export const OrderRoutes = router;

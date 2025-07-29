@@ -10,7 +10,8 @@ const createMenuItem = async (payload: IMenuItem) => {
 };
 
 const getMenuItems = async () => {
-  return MenuItem.find().populate("categoryId");
+  const menuItems = await MenuItem.find({});
+  return menuItems;
 };
 
 const getMenuItemById = async (id: string) => {
