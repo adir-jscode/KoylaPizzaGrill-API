@@ -16,6 +16,7 @@ import { Order } from "./order.model";
 import httpStatus from "http-status-codes";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
 import { FilterQuery } from "mongoose";
+import { sendEmail } from "../../utils/sendMail";
 
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -53,36 +54,41 @@ export const createOrder = async (
         primaryOptPrice = foundOpt?.price ?? 0;
       }
 
-      // Calculate secondary options total price
-      let secondaryOptTotal = 0;
+      // Prepare secondaryOptions with individual prices
+      let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
+        undefined;
+      let secondaryTotal = 0;
       if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
-        for (const so of orderItem.secondaryOptions) {
-          const foundSec = menuItem.secondaryOptions.find(
-            (sec) => sec.name === so.name
+        secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
+          const foundSecondary = menuItem?.secondaryOptions?.find(
+            (ms) => ms.name === so.name
           );
-          if (foundSec) {
-            const foundPrice =
-              foundSec.options.find((opt) => opt.name === so.name)?.price ??
-              so.price ??
-              0;
-            secondaryOptTotal += foundPrice;
-          } else {
-            secondaryOptTotal += so.price ?? 0;
-          }
-        }
+          const optPrice =
+            foundSecondary?.options.find((opt) => opt.name === so.name)
+              ?.price ??
+            so.price ??
+            0;
+          secondaryTotal += optPrice;
+          return { ...so, price: optPrice };
+        });
       }
 
-      // Calculate addons total price
+      // Prepare addons with individual prices
+      let addonsWithPrice: typeof orderItem.addons = undefined;
       let addonsTotal = 0;
       if (orderItem.addons && menuItem.addons) {
-        for (const add of orderItem.addons) {
-          const foundAdd = menuItem.addons.find((a) => a.name === add.name);
-          addonsTotal += foundAdd?.price ?? add.price ?? 0;
-        }
+        addonsWithPrice = orderItem.addons.map((addon) => {
+          const foundAddon = menuItem?.addons?.find(
+            (ma) => ma.name === addon.name
+          );
+          const addonPrice = foundAddon?.price ?? addon.price ?? 0;
+          addonsTotal += addonPrice;
+          return { ...addon, price: addonPrice };
+        });
       }
 
       const totalPrice =
-        (basePrice + primaryOptPrice + secondaryOptTotal + addonsTotal) *
+        (basePrice + primaryOptPrice + secondaryTotal + addonsTotal) *
         orderItem.quantity;
 
       subtotal += totalPrice;
@@ -95,13 +101,12 @@ export const createOrder = async (
           ...orderItem.primaryOption,
           price: primaryOptPrice,
         },
-        secondaryOptions: orderItem.secondaryOptions,
-        addons: orderItem.addons,
+        secondaryOptions: secondaryOptionsWithPrice,
+        addons: addonsWithPrice,
         totalPrice,
       });
     }
 
-    // Calculate other charges
     let deliveryFee = 0;
     if (payload.orderType === OrderType.DELIVERY) deliveryFee = 5; // adjust as needed
 
@@ -118,6 +123,10 @@ export const createOrder = async (
         $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
       });
 
+      if (!coupon) {
+        throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
+      }
+
       if (coupon && subtotal >= coupon.minOrder) {
         if (coupon.type === Type.PERCENTAGE) {
           discount = subtotal * (coupon.value / 100);
@@ -130,7 +139,6 @@ export const createOrder = async (
     }
 
     discount = Math.max(discount, 0);
-
     const TAX_RATE = 0.0875; //assume
     const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
 
@@ -254,6 +262,41 @@ export const createOrder = async (
     // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
     const latestOrder = await Order.findById(orderDoc._id);
     const latestPayment = await Payment.findById(paymentDoc._id);
+
+    // if (latestOrder && latestOrder.customerEmail) {
+    //   try {
+    //     await sendEmail({
+    //       to: latestOrder.customerEmail,
+    //       subject: `Your Order Confirmation: ${latestOrder.orderNumber}`,
+    //       templateName: "order", // Name of your .ejs file (without .ejs)
+    //       templateData: {
+    //         customerName: latestOrder.customerName,
+    //         orderNumber: latestOrder.orderNumber,
+    //         orderDateTime: new Date().toLocaleString("en-US", {
+    //           timeZone: "Asia/Dhaka",
+    //         }),
+    //         orderType: latestOrder.orderType,
+    //         deliveryAddress: latestOrder.deliveryAddress,
+    //         specialInstructions: latestOrder.specialInstructions,
+    //         status: latestOrder.status,
+    //         orderItems: latestOrder.orderItems,
+    //         subtotal: latestOrder.subtotal,
+    //         deliveryFee: latestOrder.deliveryFee || 0,
+    //         tip: latestOrder.tip || 0,
+    //         discount: latestOrder.discount || 0,
+    //         tax: latestOrder.tax,
+    //         total: latestOrder.total,
+    //         couponCode: latestOrder.couponCode,
+    //       },
+    //     });
+    //   } catch (emailError: any) {
+    //     // Log, but don't block order completion
+    //     console.error(
+    //       "Order confirmation email failed:",
+    //       emailError?.message || emailError
+    //     );
+    //   }
+    // }
 
     // Return freshest docs
     return {

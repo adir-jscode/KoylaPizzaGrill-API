@@ -5,7 +5,7 @@ import { restaurantSettingsZodSchema } from "./restaurantSettings.validation";
 import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = Router();
-router.get("/", checkAuth, ctrl.getSettings);
+router.get("/", ctrl.getSettings);
 router.post(
   "/add-settings",
   checkAuth,

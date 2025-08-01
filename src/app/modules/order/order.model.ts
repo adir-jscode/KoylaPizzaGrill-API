@@ -100,4 +100,4 @@ const OrderSchema = new Schema<IOrder & Document>(
   { timestamps: true, versionKey: false }
 );
 
-export const Order = model<IOrder & Document>("Order", OrderSchema);
+export const Order = model<IOrder>("Order", OrderSchema);

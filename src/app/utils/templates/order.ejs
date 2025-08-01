@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Your Order Confirmation</title>
+  </head>
+  <body style="background: #f7f7f7; margin: 0; padding: 0">
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="font-family: Arial, sans-serif; background: #f7f7f7"
+    >
+      <tr>
+        <td>
+          <table
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            align="center"
+            style="margin: 24px auto; background: #fff; border-radius: 6px"
+          >
+            <tr>
+              <td style="padding: 24px 28px">
+                <h2 style="margin-top: 0; color: #222">
+                  Order Confirmation - Koyla Pizza Grill
+                </h2>
+                <p style="margin-bottom: 10px">
+                  Hello <b><%= customerName %></b>,
+                </p>
+                <p style="margin-bottom: 10px">
+                  Thank you for your order <b><%= orderNumber %></b> placed on
+                  <%= orderDateTime %>.
+                </p>
+                <table
+                  width="100%"
+                  cellpadding="2"
+                  cellspacing="0"
+                  style="margin: 16px 0; font-size: 15px"
+                >
+                  <% orderItems.forEach(function(item) { %>
+                  <tr>
+                    <td>
+                      <b><%= item.name %></b> x <%= item.quantity %> <% if
+                      (item.primaryOption) { %><br />
+                      <span style="font-size: 12px"
+                        >Option: <%= item.primaryOption.name %></span
+                      >
+                      <% } %> <% if (item.addons && item.addons.length) { %><br />
+                      <span style="font-size: 12px"
+                        >Addons: <%= item.addons.map(a => a.name).join(', ')
+                        %></span
+                      >
+                      <% } %>
+                    </td>
+                    <td align="right" style="white-space: nowrap">
+                      $<%= item.totalPrice.toFixed(2) %>
+                    </td>
+                  </tr>
+                  <% }); %>
+                </table>
+                <table
+                  width="100%"
+                  cellpadding="2"
+                  cellspacing="0"
+                  style="font-size: 15px"
+                >
+                  <tr>
+                    <td>Subtotal:</td>
+                    <td align="right">$<%= subtotal.toFixed(2) %></td>
+                  </tr>
+                  <% if (deliveryFee && deliveryFee > 0) { %>
+                  <tr>
+                    <td>Delivery Fee:</td>
+                    <td align="right">$<%= deliveryFee.toFixed(2) %></td>
+                  </tr>
+                  <% } %> <% if (tip && tip > 0) { %>
+                  <tr>
+                    <td>Tip:</td>
+                    <td align="right">$<%= tip.toFixed(2) %></td>
+                  </tr>
+                  <% } %> <% if (discount && discount > 0) { %>
+                  <tr>
+                    <td>Discount:</td>
+                    <td align="right">-$<%= discount.toFixed(2) %></td>
+                  </tr>
+                  <% } %>
+                  <tr>
+                    <td>Tax:</td>
+                    <td align="right">$<%= tax.toFixed(2) %></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight: bold">Total:</td>
+                    <td align="right" style="font-weight: bold">
+                      $<%= total.toFixed(2) %>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 18px 0 6px 0">
+                  <b>Order Type:</b> <%= orderType %><br />
+                  <% if (deliveryAddress) { %>
+                  <b>Delivery Address:</b> <%= deliveryAddress %><br />
+                  <% } %> <% if (specialInstructions) { %>
+                  <b>Special Instructions:</b> <%= specialInstructions %><br />
+                  <% } %>
+                  <b>Status:</b> <%= status %>
+                </p>
+                <p style="font-size: 14px; color: #555">
+                  For questions, reply to this email or call
+                  <b>+880123456789</b>.
+                </p>
+                <p style="font-size: 12px; color: #aaa; margin-top: 28px">
+                  &copy; <%= new Date().getFullYear() %> Koyla Pizza Grill. All
+                  rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

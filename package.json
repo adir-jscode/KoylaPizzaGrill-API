@@ -23,18 +23,22 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@types/ejs": "^3.1.5",
     "@types/multer": "^2.0.0",
+    "@types/nodemailer": "^6.4.17",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
     "express": "^5.1.0",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^7.0.5",
     "stripe": "^18.3.0",
     "zod": "^4.0.10"
   }
