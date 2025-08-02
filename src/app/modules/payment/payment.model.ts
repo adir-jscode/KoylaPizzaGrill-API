@@ -1,7 +1,7 @@
 import { Schema, model, Types, Document } from "mongoose";
 import { IPayment, PAYMENT_STATUS } from "./payment.interface";
 
-const PaymentSchema = new Schema<IPayment>(
+const PaymentSchema = new Schema<IPayment & Document>(
   {
     order: {
       type: Schema.Types.ObjectId,
@@ -23,4 +23,4 @@ const PaymentSchema = new Schema<IPayment>(
   { timestamps: true, versionKey: false }
 );
 
-export const Payment = model<IPayment>("Payment", PaymentSchema);
+export const Payment = model<IPayment & Document>("Payment", PaymentSchema);

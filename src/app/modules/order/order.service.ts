@@ -15,8 +15,7 @@ import {
 import { Order } from "./order.model";
 import httpStatus from "http-status-codes";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
-import { FilterQuery } from "mongoose";
-import { sendEmail } from "../../utils/sendMail";
+import { Document, FilterQuery } from "mongoose";
 import { RestaurantSettings } from "../restaurantSettings/restaurantSettings.model";
 
 const getTransactionId = () => {
@@ -25,292 +24,289 @@ const getTransactionId = () => {
 const generateOrderNumber = () => {
   return `KPG-${Date.now()}`;
 };
-export const createOrder = async (
-  payload: IOrder & { paymentMethod: PAYMENT_METHOD }
-) => {
-  const transactionId = getTransactionId();
-  const session = await Order.startSession();
+// export const createOrder = async (
+//   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
+// ) => {
+//   const transactionId = getTransactionId();
+//   const session = await Order.startSession();
+//   console.log(payload);
 
-  session.startTransaction();
-  try {
-    let subtotal = 0;
-    let preparedItems: IOrderItem[] = [];
+//   session.startTransaction();
+//   try {
+//     let subtotal = 0;
+//     let preparedItems: IOrderItem[] = [];
 
-    for (const orderItem of payload.orderItems) {
-      const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
+//     for (const orderItem of payload.orderItems) {
+//       const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
 
-      if (!menuItem)
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          `Menu item ${orderItem.menuItemId} not found.`
-        );
+//       if (!menuItem)
+//         throw new AppError(
+//           httpStatus.NOT_FOUND,
+//           `Menu item ${orderItem.menuItemId} not found.`
+//         );
 
-      let basePrice = menuItem.price;
+//       let basePrice = menuItem.price;
 
-      let primaryOptPrice = 0;
-      if (orderItem.primaryOption) {
-        const foundOpt = menuItem.primaryOption.options.find(
-          (opt) => opt.name === orderItem.primaryOption.name
-        );
-        basePrice = primaryOptPrice = foundOpt?.price ?? 0;
-      }
+//       let primaryOptPrice = 0;
+//       if (orderItem.primaryOption) {
+//         const foundOpt = menuItem.primaryOption.options.find(
+//           (opt) => opt.name === orderItem.primaryOption.name
+//         );
+//         basePrice = primaryOptPrice = foundOpt?.price ?? 0;
+//       }
 
-      // Prepare secondaryOptions with individual prices
-      let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
-        undefined;
-      let secondaryTotal = 0;
-      if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
-        secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
-          const foundSecondary = menuItem?.secondaryOptions?.find(
-            (ms) => ms.name === so.name
-          );
-          const optPrice =
-            foundSecondary?.options.find((opt) => opt.name === so.name)
-              ?.price ??
-            so.price ??
-            0;
-          secondaryTotal += optPrice;
-          return { ...so, price: optPrice };
-        });
-      }
+//       // Prepare secondaryOptions with individual prices
+//       let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
+//         undefined;
+//       let secondaryTotal = 0;
+//       if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
+//         secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
+//           const foundSecondary = menuItem?.secondaryOptions?.find(
+//             (ms) => ms.name === so.name
+//           );
+//           const optPrice =
+//             foundSecondary?.options.find((opt) => opt.name === so.name)
+//               ?.price ??
+//             so.price ??
+//             0;
+//           secondaryTotal += optPrice;
+//           return { ...so, price: optPrice };
+//         });
+//       }
 
-      // Prepare addons with individual prices
-      let addonsWithPrice: typeof orderItem.addons = undefined;
-      let addonsTotal = 0;
-      if (orderItem.addons && menuItem.addons) {
-        addonsWithPrice = orderItem.addons.map((addon) => {
-          const foundAddon = menuItem?.addons?.find(
-            (ma) => ma.name === addon.name
-          );
-          const addonPrice = foundAddon?.price ?? addon.price ?? 0;
-          addonsTotal += addonPrice;
-          return { ...addon, price: addonPrice };
-        });
-      }
+//       // Prepare addons with individual prices
+//       let addonsWithPrice: typeof orderItem.addons = undefined;
+//       let addonsTotal = 0;
+//       if (orderItem.addons && menuItem.addons) {
+//         addonsWithPrice = orderItem.addons.map((addon) => {
+//           const foundAddon = menuItem?.addons?.find(
+//             (ma) => ma.name === addon.name
+//           );
+//           const addonPrice = foundAddon?.price ?? addon.price ?? 0;
+//           addonsTotal += addonPrice;
+//           return { ...addon, price: addonPrice };
+//         });
+//       }
 
-      const totalPrice =
-        (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
+//       const totalPrice =
+//         (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
 
-      subtotal += totalPrice;
+//       subtotal += totalPrice;
 
-      preparedItems.push({
-        ...orderItem,
-        name: menuItem.name,
-        basePrice,
-        primaryOption: {
-          ...orderItem.primaryOption,
-          price: primaryOptPrice,
-        },
-        secondaryOptions: secondaryOptionsWithPrice,
-        addons: addonsWithPrice,
-        totalPrice,
-      });
-    }
+//       preparedItems.push({
+//         ...orderItem,
+//         name: menuItem.name,
+//         basePrice,
+//         primaryOption: {
+//           ...orderItem.primaryOption,
+//           price: primaryOptPrice,
+//         },
+//         secondaryOptions: secondaryOptionsWithPrice,
+//         addons: addonsWithPrice,
+//         totalPrice,
+//       });
+//     }
 
-    let deliveryFee = 0;
-    if (payload.orderType === OrderType.DELIVERY) deliveryFee = 5; // adjust as needed
+//     let deliveryFee = 0;
+//     if (payload.orderType === OrderType.DELIVERY) deliveryFee = 5; // adjust as needed
 
-    const tip = payload.tip ?? 0;
-    let discount = 0;
+//     const tip = payload.tip ?? 0;
+//     let discount = 0;
 
-    // Valid coupon application
-    if (payload.couponCode) {
-      const coupon = await Coupon.findOne({
-        code: payload.couponCode,
-        active: true,
-        validFrom: { $lte: new Date() },
-        validTo: { $gte: new Date() },
-        $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
-      });
+//     // Valid coupon application
+//     if (payload.couponCode) {
+//       const coupon = await Coupon.findOne({
+//         code: payload.couponCode,
+//         active: true,
+//         validFrom: { $lte: new Date() },
+//         validTo: { $gte: new Date() },
+//         $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
+//       });
 
-      if (!coupon) {
-        throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
-      }
+//       if (!coupon) {
+//         throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
+//       }
 
-      if (coupon && subtotal >= coupon.minOrder) {
-        if (coupon.type === Type.PERCENTAGE) {
-          discount = subtotal * (coupon.value / 100);
-          if (coupon.maxDiscount)
-            discount = Math.min(discount, coupon.maxDiscount);
-        } else {
-          discount = coupon.value;
-        }
-      }
-    }
+//       if (coupon && subtotal >= coupon.minOrder) {
+//         if (coupon.type === Type.PERCENTAGE) {
+//           discount = subtotal * (coupon.value / 100);
+//           if (coupon.maxDiscount)
+//             discount = Math.min(discount, coupon.maxDiscount);
+//         } else {
+//           discount = coupon.value;
+//         }
+//       }
+//     }
 
-    discount = Math.max(discount, 0);
-    const settings = await RestaurantSettings.findOne();
-    const TAX_RATE = settings?.taxRate as number;
-    const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+//     discount = Math.max(discount, 0);
+//     const settings = await RestaurantSettings.findOne();
+//     const TAX_RATE = (settings?.taxRate as number) / 100;
+//     const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
 
-    const total = Number(
-      (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
-    );
+//     const total = Number(
+//       (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
+//     );
 
-    const orderNumber = generateOrderNumber();
+//     const orderNumber = generateOrderNumber();
+//     let paymentStatus = PAYMENT_STATUS.UNPAID;
+//     let orderStatus: IStatusHistory["status"] = "PENDING";
 
-    //handling STATUS
-    /**
-     * CASH-> PAYMENT (UNPAID) -> PAYMENT STATUS UPDATED TO PAID MANUALLY
-     * CARD ->
-     */
-    // Prepare initial payment status and order status
-    let paymentStatus = PAYMENT_STATUS.UNPAID;
-    let orderStatus: IStatusHistory["status"] = "PENDING";
+//     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
+//       paymentStatus = PAYMENT_STATUS.UNPAID;
+//       orderStatus = "CONFIRMED";
+//     }
 
-    if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
-      paymentStatus = PAYMENT_STATUS.UNPAID;
-      orderStatus = "CONFIRMED";
-    }
+//     //order history
+//     const statusHistory: IStatusHistory[] = [
+//       {
+//         status: "PENDING" as IStatusHistory["status"],
+//         updatedAt: new Date().toISOString(),
+//       },
+//       ...(orderStatus === "CONFIRMED"
+//         ? [
+//             {
+//               status: "CONFIRMED" as IStatusHistory["status"],
+//               updatedAt: new Date().toISOString(),
+//             },
+//           ]
+//         : []),
+//     ];
 
-    //order history
-    const statusHistory: IStatusHistory[] = [
-      {
-        status: "PENDING" as IStatusHistory["status"],
-        updatedAt: new Date().toISOString(),
-      },
-      ...(orderStatus === "CONFIRMED"
-        ? [
-            {
-              status: "CONFIRMED" as IStatusHistory["status"],
-              updatedAt: new Date().toISOString(),
-            },
-          ]
-        : []),
-    ];
+//     // Prepare Payment doc
+//     const paymentDocArr = await Payment.create(
+//       [
+//         {
+//           order: undefined, // will link after
+//           transactionId, // temp
+//           amount: total,
+//           status: paymentStatus,
+//           paymentMethod: payload.paymentMethod,
+//         },
+//       ],
+//       { session }
+//     );
+//     let paymentDoc = paymentDocArr[0];
 
-    // Prepare Payment doc
-    const paymentDocArr = await Payment.create(
-      [
-        {
-          order: undefined, // will link after
-          transactionId, // temp
-          amount: total,
-          status: paymentStatus,
-          paymentMethod: payload.paymentMethod,
-        },
-      ],
-      { session }
-    );
-    let paymentDoc = paymentDocArr[0];
+//     // Create Order doc
+//     const orderDocArr = await Order.create(
+//       [
+//         {
+//           ...payload,
+//           orderNumber,
+//           orderItems: preparedItems,
+//           subtotal: Number(subtotal.toFixed(2)),
+//           deliveryFee,
+//           tax,
+//           tip,
+//           discount,
+//           total,
+//           status: orderStatus,
+//           statusHistory,
+//           payment: paymentDoc._id,
+//         },
+//       ],
+//       { session }
+//     );
+//     let orderDoc = orderDocArr[0];
 
-    // Create Order doc
-    const orderDocArr = await Order.create(
-      [
-        {
-          ...payload,
-          orderNumber,
-          orderItems: preparedItems,
-          subtotal: Number(subtotal.toFixed(2)),
-          deliveryFee,
-          tax,
-          tip,
-          discount,
-          total,
-          status: orderStatus,
-          statusHistory,
-          payment: paymentDoc._id,
-        },
-      ],
-      { session }
-    );
-    let orderDoc = orderDocArr[0];
+//     // Link payment -> order
+//     await Payment.findByIdAndUpdate(
+//       paymentDoc._id,
+//       { order: orderDoc._id },
+//       { session }
+//     );
 
-    // Link payment -> order
-    await Payment.findByIdAndUpdate(
-      paymentDoc._id,
-      { order: orderDoc._id },
-      { session }
-    );
+//     // Stripe PaymentIntent Logic
+//     let clientSecret: string | undefined = undefined;
+//     let updatedPaymentDoc = paymentDoc;
+//     const { paymentIntentId } = payload;
 
-    // Stripe PaymentIntent Logic
-    let clientSecret: string | undefined = undefined;
-    let updatedPaymentDoc = paymentDoc;
+//     if (payload.paymentMethod === PAYMENT_METHOD.CARD && paymentIntentId) {
+//       const paymentIntent = await stripe.paymentIntents.retrieve(
+//         paymentIntentId as string
+//       );
 
-    if (payload.paymentMethod === PAYMENT_METHOD.CARD) {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(total * 100),
-        currency: "usd",
-        payment_method_types: ["card"],
-        metadata: { transactionId },
-        receipt_email: payload.customerEmail || undefined,
-      });
+//       if (paymentIntent.status !== "succeeded") {
+//         throw new AppError(
+//           httpStatus.PAYMENT_REQUIRED,
+//           "Payment not completed"
+//         );
+//       }
+//       const updatedPayment = await Payment.findByIdAndUpdate(
+//         paymentDoc._id,
+//         {
+//           transactionId: transactionId,
+//           paymentIntentId: paymentIntent,
+//           status: PAYMENT_STATUS.UNPAID,
+//         },
+//         { new: true, session }
+//       );
 
-      const updatedPayment = await Payment.findByIdAndUpdate(
-        paymentDoc._id,
-        {
-          transactionId: transactionId,
-          paymentIntentId: paymentIntent.id,
-          status: PAYMENT_STATUS.UNPAID,
-        },
-        { new: true, session }
-      );
+//       if (!updatedPayment) {
+//         throw new Error(
+//           "Failed to update payment document with PaymentIntent info"
+//         );
+//       }
 
-      if (!updatedPayment) {
-        throw new Error(
-          "Failed to update payment document with PaymentIntent info"
-        );
-      }
+//       updatedPaymentDoc = updatedPayment;
+//       //clientSecret = paymentIntent?.client_secret ?? undefined;
+//     }
 
-      updatedPaymentDoc = updatedPayment;
-      clientSecret = paymentIntent.client_secret ?? undefined;
-    }
+//     // Commit and close session **before reading order again**
+//     await session.commitTransaction();
+//     session.endSession();
 
-    // Commit and close session **before reading order again**
-    await session.commitTransaction();
-    session.endSession();
+//     // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
+//     const latestOrder = await Order.findById(orderDoc._id);
+//     const latestPayment = await Payment.findById(paymentDoc._id);
 
-    // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
-    const latestOrder = await Order.findById(orderDoc._id);
-    const latestPayment = await Payment.findById(paymentDoc._id);
+//     // if (latestOrder && latestOrder.customerEmail) {
+//     //   try {
+//     //     await sendEmail({
+//     //       to: latestOrder.customerEmail,
+//     //       subject: `Your Order Confirmation: ${latestOrder.orderNumber}`,
+//     //       templateName: "order", // Name of your .ejs file (without .ejs)
+//     //       templateData: {
+//     //         customerName: latestOrder.customerName,
+//     //         orderNumber: latestOrder.orderNumber,
+//     //         orderDateTime: new Date().toLocaleString("en-US", {
+//     //           timeZone: "Asia/Dhaka",
+//     //         }),
+//     //         orderType: latestOrder.orderType,
+//     //         deliveryAddress: latestOrder.deliveryAddress,
+//     //         specialInstructions: latestOrder.specialInstructions,
+//     //         status: latestOrder.status,
+//     //         orderItems: latestOrder.orderItems,
+//     //         subtotal: latestOrder.subtotal,
+//     //         deliveryFee: latestOrder.deliveryFee || 0,
+//     //         tip: latestOrder.tip || 0,
+//     //         discount: latestOrder.discount || 0,
+//     //         tax: latestOrder.tax,
+//     //         total: latestOrder.total,
+//     //         couponCode: latestOrder.couponCode,
+//     //       },
+//     //     });
+//     //   } catch (emailError: any) {
+//     //     // Log, but don't block order completion
+//     //     console.error(
+//     //       "Order confirmation email failed:",
+//     //       emailError?.message || emailError
+//     //     );
+//     //   }
+//     // }
 
-    // if (latestOrder && latestOrder.customerEmail) {
-    //   try {
-    //     await sendEmail({
-    //       to: latestOrder.customerEmail,
-    //       subject: `Your Order Confirmation: ${latestOrder.orderNumber}`,
-    //       templateName: "order", // Name of your .ejs file (without .ejs)
-    //       templateData: {
-    //         customerName: latestOrder.customerName,
-    //         orderNumber: latestOrder.orderNumber,
-    //         orderDateTime: new Date().toLocaleString("en-US", {
-    //           timeZone: "Asia/Dhaka",
-    //         }),
-    //         orderType: latestOrder.orderType,
-    //         deliveryAddress: latestOrder.deliveryAddress,
-    //         specialInstructions: latestOrder.specialInstructions,
-    //         status: latestOrder.status,
-    //         orderItems: latestOrder.orderItems,
-    //         subtotal: latestOrder.subtotal,
-    //         deliveryFee: latestOrder.deliveryFee || 0,
-    //         tip: latestOrder.tip || 0,
-    //         discount: latestOrder.discount || 0,
-    //         tax: latestOrder.tax,
-    //         total: latestOrder.total,
-    //         couponCode: latestOrder.couponCode,
-    //       },
-    //     });
-    //   } catch (emailError: any) {
-    //     // Log, but don't block order completion
-    //     console.error(
-    //       "Order confirmation email failed:",
-    //       emailError?.message || emailError
-    //     );
-    //   }
-    // }
-
-    // Return freshest docs
-    return {
-      order: latestOrder ?? orderDoc,
-      payment: latestPayment ?? updatedPaymentDoc ?? paymentDoc,
-      clientSecret,
-    };
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
-};
+//     // Return freshest docs
+//     return {
+//       order: latestOrder ?? orderDoc,
+//       payment: latestPayment ?? updatedPaymentDoc ?? paymentDoc,
+//       clientSecret,
+//     };
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     throw error;
+//   }
+// };
 
 export const updatePaymentOrderStatus = async (orderId: string) => {
   const order = await Order.findById(orderId);
@@ -427,4 +423,279 @@ export const changeOrderStatus = async (
 
   order.save();
   return { order: order.statusHistory };
+};
+
+export const createOrder = async (
+  payload: IOrder & { paymentMethod: PAYMENT_METHOD; paymentIntentId?: string }
+) => {
+  const transactionId = getTransactionId();
+  const session = await Order.startSession();
+  session.startTransaction();
+
+  try {
+    let subtotal = 0;
+    let preparedItems: IOrderItem[] = [];
+
+    // --- Prepare items with correct pricing ---
+    for (const orderItem of payload.orderItems) {
+      const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
+      if (!menuItem)
+        throw new AppError(
+          httpStatus.NOT_FOUND,
+          `Menu item ${orderItem.menuItemId} not found.`
+        );
+
+      let basePrice = menuItem.price ? menuItem.price : 0;
+
+      let primaryOptPrice = 0;
+      if (orderItem.primaryOption) {
+        const foundOpt = menuItem.primaryOption.options.find(
+          (opt) => opt.name === orderItem.primaryOption.name
+        );
+        basePrice = foundOpt?.price ?? 0;
+      }
+
+      // --- Secondary options with individual prices ---
+      let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
+        undefined;
+      let secondaryTotal = 0;
+      if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
+        secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
+          const foundSecondary = menuItem.secondaryOptions?.find(
+            (ms) => ms.name === so.name
+          );
+          const optPrice =
+            foundSecondary?.options.find((opt) => opt.name === so.name)
+              ?.price ??
+            so.price ??
+            0;
+          secondaryTotal += optPrice;
+          return { ...so, price: optPrice };
+        });
+      }
+
+      // --- Addons with individual prices ---
+      let addonsWithPrice: typeof orderItem.addons = undefined;
+      let addonsTotal = 0;
+      if (orderItem.addons && menuItem.addons) {
+        addonsWithPrice = orderItem.addons.map((addon) => {
+          const foundAddon = menuItem.addons?.find(
+            (ma) => ma.name === addon.name
+          );
+          const addonPrice = foundAddon?.price ?? addon.price ?? 0;
+          addonsTotal += addonPrice;
+          return { ...addon, price: addonPrice };
+        });
+      }
+
+      const totalPrice =
+        (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
+      subtotal += totalPrice;
+
+      preparedItems.push({
+        ...orderItem,
+        name: menuItem.name,
+        basePrice,
+        primaryOption: {
+          ...orderItem.primaryOption,
+          price: primaryOptPrice,
+        },
+        secondaryOptions: secondaryOptionsWithPrice,
+        addons: addonsWithPrice,
+        totalPrice,
+      });
+    }
+
+    // --- Other charges and order totals ---
+    let deliveryFee = payload.orderType === OrderType.DELIVERY ? 5 : 0;
+    const tip = payload.tip ?? 0;
+    let discount = 0;
+
+    // --- Coupon ---
+    if (payload.couponCode) {
+      const coupon = await Coupon.findOne({
+        code: payload.couponCode,
+        active: true,
+        validFrom: { $lte: new Date() },
+        validTo: { $gte: new Date() },
+        $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
+      });
+      if (!coupon)
+        throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
+      if (subtotal >= coupon.minOrder) {
+        if (coupon.type === Type.PERCENTAGE) {
+          discount = subtotal * (coupon.value / 100);
+          if (coupon.maxDiscount)
+            discount = Math.min(discount, coupon.maxDiscount);
+        } else {
+          discount = coupon.value;
+        }
+      }
+    }
+    discount = Math.max(discount, 0);
+
+    const settings = await RestaurantSettings.findOne();
+    const TAX_RATE = (settings?.taxRate as number) / 100;
+    const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+
+    const total = Number(
+      (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
+    );
+    const orderNumber = generateOrderNumber();
+
+    // --- Set statuses ---
+    let paymentStatus = PAYMENT_STATUS.UNPAID;
+    let orderStatus: IStatusHistory["status"] = "PENDING";
+    if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
+      paymentStatus = PAYMENT_STATUS.UNPAID;
+      orderStatus = "CONFIRMED";
+    }
+
+    // --- Order status history ---
+    const statusHistory: IStatusHistory[] = [
+      {
+        status: "PENDING" as IStatusHistory["status"],
+        updatedAt: new Date().toISOString(),
+      },
+      ...(orderStatus === "CONFIRMED"
+        ? [
+            {
+              status: "CONFIRMED" as IStatusHistory["status"],
+              updatedAt: new Date().toISOString(),
+            },
+          ]
+        : []),
+    ];
+
+    // --------------------------
+    // CARD PAYMENT FLOW
+    // --------------------------
+    // CARD PAYMENT FLOW
+    let paymentDoc: IPayment & Document;
+    let orderDoc: IOrder & Document;
+    const { paymentIntentId } = payload;
+    if (payload.paymentMethod === PAYMENT_METHOD.CARD && paymentIntentId) {
+      if (!paymentIntentId) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Missing paymentIntentId for card payment"
+        );
+      }
+
+      // Retrieve and check intent status
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        paymentIntentId as string
+      );
+      if (paymentIntent.status !== "succeeded") {
+        throw new AppError(
+          httpStatus.PAYMENT_REQUIRED,
+          "Stripe payment not completed"
+        );
+      }
+
+      // Await Payment.create and then get first document
+      const paymentDocs = await Payment.create(
+        [
+          {
+            order: undefined,
+            transactionId,
+            paymentIntentId,
+            amount: total,
+            status: PAYMENT_STATUS.PAID,
+            paymentMethod: PAYMENT_METHOD.CARD,
+          },
+        ],
+        { session }
+      );
+      paymentDoc = paymentDocs[0]; // <-- correctly accessed after await
+
+      // Await Order.create and get first document
+      const orderDocs = await Order.create(
+        [
+          {
+            ...payload,
+            orderNumber,
+            orderItems: preparedItems,
+            subtotal: Number(subtotal.toFixed(2)),
+            deliveryFee,
+            tax,
+            tip,
+            discount,
+            total,
+            status: "CONFIRMED",
+            statusHistory: [
+              { status: "PENDING", updatedAt: new Date().toISOString() },
+              { status: "CONFIRMED", updatedAt: new Date().toISOString() },
+            ],
+            payment: paymentDoc._id,
+          },
+        ],
+        { session }
+      );
+      orderDoc = orderDocs[0]; // <-- correctly accessed after await
+
+      await Payment.findByIdAndUpdate(
+        paymentDoc._id,
+        { order: orderDoc._id },
+        { session }
+      );
+    }
+
+    // --------------------------
+    // CASH PAYMENT FLOW
+    // --------------------------
+    // CASH PAYMENT FLOW
+    if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
+      const paymentDocs = await Payment.create(
+        [
+          {
+            order: undefined, // To be linked later
+            transaction: transactionId,
+            amount: total,
+            status: PAYMENT_STATUS.UNPAID,
+            paymentMethod: PAYMENT_METHOD.CASH,
+          },
+        ],
+        { session }
+      );
+      // Access the first created document safely after await
+      const paymentDoc = paymentDocs[0];
+
+      // Create order document (await and pick first element)
+      const orderDocs = await Order.create(
+        [
+          {
+            ...payload,
+            orderNumber,
+            orderItems: preparedItems,
+            subtotal: Number(subtotal.toFixed(2)),
+            deliveryFee,
+            tax,
+            tip,
+            discount,
+            total,
+            status: orderStatus,
+            statusHistory,
+            payment: paymentDoc._id,
+          },
+        ],
+        { session }
+      );
+      const orderDoc = orderDocs[0];
+
+      // Link the payment document with the order
+      await Payment.findByIdAndUpdate(
+        paymentDoc._id,
+        { order: orderDoc._id },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };

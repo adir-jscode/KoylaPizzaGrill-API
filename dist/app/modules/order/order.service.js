@@ -24,6 +24,7 @@ const order_interface_1 = require("./order.interface");
 const order_model_1 = require("./order.model");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const date_fns_1 = require("date-fns");
+const restaurantSettings_model_1 = require("../restaurantSettings/restaurantSettings.model");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
@@ -105,7 +106,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             }
         }
         discount = Math.max(discount, 0);
-        const TAX_RATE = 0.0875; //assume
+        const settings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
+        const TAX_RATE = settings === null || settings === void 0 ? void 0 : settings.taxRate;
         const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
         const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
         const orderNumber = generateOrderNumber();

@@ -16,6 +16,33 @@ import Stripe from "stripe";
 import { Order } from "./order.model";
 import { stripe } from "../../config/stripe";
 
+// POST /orders/payment-intent
+export const createPaymentIntent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { total, customerEmail } = req.body;
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(Number(total) * 100),
+      currency: "usd",
+      payment_method_types: ["card"],
+      metadata: { tempId: Date.now().toString() },
+      receipt_email: customerEmail,
+    });
+
+    res.status(200).json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const createOrderController = async (
   req: Request,
   res: Response,
@@ -37,11 +64,7 @@ export const createOrderController = async (
       success: true,
       statusCode: httpStatus.CREATED,
       message: "Order created successfully",
-      data: {
-        order: result.order,
-        payment: result.payment,
-        clientSecret: result.clientSecret,
-      },
+      data: null,
     });
   } catch (error) {
     next(error);

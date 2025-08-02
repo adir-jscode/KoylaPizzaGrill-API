@@ -52,6 +52,7 @@ export interface IOrder {
   statusHistory: IStatusHistory[];
   specialInstructions?: string;
   couponCode?: string;
+  paymentIntentId?: string;
   payment?: Types.ObjectId;
   paymentMethod: PAYMENT_METHOD;
 }

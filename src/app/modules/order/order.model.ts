@@ -95,6 +95,7 @@ const OrderSchema = new Schema<IOrder & Document>(
     statusHistory: { type: [StatusHistorySchema], default: [] },
     specialInstructions: { type: String },
     couponCode: { type: String },
+    paymentIntentId: { type: String },
     payment: { type: Types.ObjectId, ref: "Payment" },
   },
   { timestamps: true, versionKey: false }

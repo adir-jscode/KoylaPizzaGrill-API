@@ -60,6 +60,7 @@ export const createOrderZodSchema = z.object({
   discount: z.number().nonnegative().optional(),
   paymentMethod: paymentMethodEnum,
   couponCode: z.string().optional(),
+  paymentIntentId: z.string().optional(),
 });
 
 // For update, all fields are optional but at least one must exist
