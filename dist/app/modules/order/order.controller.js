@@ -41,11 +41,6 @@ const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0
                 clientSecret: paymentIntent.client_secret,
             },
         });
-        res.status(200).json({
-            success: true,
-            clientSecret: paymentIntent.client_secret,
-            paymentIntentId: paymentIntent.id,
-        });
     }
     catch (err) {
         next(err);

@@ -430,13 +430,13 @@ export const createOrder = async (
 ) => {
   const transactionId = getTransactionId();
   const session = await Order.startSession();
-  session.startTransaction();
+  await session.startTransaction();
 
   try {
     let subtotal = 0;
     let preparedItems: IOrderItem[] = [];
 
-    // --- Prepare items with correct pricing ---
+    // Calculate item prices and prepare items for order
     for (const orderItem of payload.orderItems) {
       const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
       if (!menuItem)
@@ -445,17 +445,16 @@ export const createOrder = async (
           `Menu item ${orderItem.menuItemId} not found.`
         );
 
-      let basePrice = menuItem.price ? menuItem.price : 0;
+      // Base price from menu item
+      let basePrice = menuItem.price ?? 0;
 
+      // Primary option price
       let primaryOptPrice = 0;
       if (orderItem.primaryOption) {
-        const foundOpt = menuItem.primaryOption.options.find(
-          (opt) => opt.name === orderItem.primaryOption.name
-        );
-        basePrice = foundOpt?.price ?? 0;
+        basePrice = orderItem.primaryOption?.price ?? 0;
       }
 
-      // --- Secondary options with individual prices ---
+      // Secondary options with individual prices and totals
       let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
         undefined;
       let secondaryTotal = 0;
@@ -474,7 +473,7 @@ export const createOrder = async (
         });
       }
 
-      // --- Addons with individual prices ---
+      // Addons with individual prices and totals
       let addonsWithPrice: typeof orderItem.addons = undefined;
       let addonsTotal = 0;
       if (orderItem.addons && menuItem.addons) {
@@ -488,30 +487,34 @@ export const createOrder = async (
         });
       }
 
+      // Calculate total price for this order item (including quantity)
       const totalPrice =
         (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
       subtotal += totalPrice;
 
+      // Push prepared item to array
       preparedItems.push({
         ...orderItem,
         name: menuItem.name,
         basePrice,
-        primaryOption: {
-          ...orderItem.primaryOption,
-          price: primaryOptPrice,
-        },
+        primaryOption: { ...orderItem.primaryOption, price: primaryOptPrice },
         secondaryOptions: secondaryOptionsWithPrice,
         addons: addonsWithPrice,
         totalPrice,
       });
     }
 
-    // --- Other charges and order totals ---
-    let deliveryFee = payload.orderType === OrderType.DELIVERY ? 5 : 0;
+    // Calculate delivery fee
+    const resSettings = await RestaurantSettings.findOne();
+    const deliveryFee =
+      payload.orderType === OrderType.DELIVERY
+        ? (payload.deliveryFee as number)
+        : 0;
+
     const tip = payload.tip ?? 0;
     let discount = 0;
 
-    // --- Coupon ---
+    // Apply coupon discount if valid
     if (payload.couponCode) {
       const coupon = await Coupon.findOne({
         code: payload.couponCode,
@@ -520,9 +523,11 @@ export const createOrder = async (
         validTo: { $gte: new Date() },
         $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
       });
+
       if (!coupon)
         throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
-      if (subtotal >= coupon.minOrder) {
+
+      if (coupon && subtotal >= coupon.minOrder) {
         if (coupon.type === Type.PERCENTAGE) {
           discount = subtotal * (coupon.value / 100);
           if (coupon.maxDiscount)
@@ -535,15 +540,15 @@ export const createOrder = async (
     discount = Math.max(discount, 0);
 
     const settings = await RestaurantSettings.findOne();
-    const TAX_RATE = (settings?.taxRate as number) / 100;
-    const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+    const TAX_RATE = settings?.taxRate as number;
+    const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
 
+    // Calculate grand total
     const total = Number(
       (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
     );
     const orderNumber = generateOrderNumber();
 
-    // --- Set statuses ---
     let paymentStatus = PAYMENT_STATUS.UNPAID;
     let orderStatus: IStatusHistory["status"] = "PENDING";
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
@@ -567,10 +572,7 @@ export const createOrder = async (
         : []),
     ];
 
-    // --------------------------
-    // CARD PAYMENT FLOW
-    // --------------------------
-    // CARD PAYMENT FLOW
+    // CARD PAYMENT
     let paymentDoc: IPayment & Document;
     let orderDoc: IOrder & Document;
     const { paymentIntentId } = payload;
@@ -632,8 +634,7 @@ export const createOrder = async (
         ],
         { session }
       );
-      orderDoc = orderDocs[0]; // <-- correctly accessed after await
-
+      orderDoc = orderDocs[0];
       await Payment.findByIdAndUpdate(
         paymentDoc._id,
         { order: orderDoc._id },
@@ -641,9 +642,6 @@ export const createOrder = async (
       );
     }
 
-    // --------------------------
-    // CASH PAYMENT FLOW
-    // --------------------------
     // CASH PAYMENT FLOW
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
       const paymentDocs = await Payment.create(
@@ -658,10 +656,9 @@ export const createOrder = async (
         ],
         { session }
       );
-      // Access the first created document safely after await
+
       const paymentDoc = paymentDocs[0];
 
-      // Create order document (await and pick first element)
       const orderDocs = await Order.create(
         [
           {
@@ -683,7 +680,6 @@ export const createOrder = async (
       );
       const orderDoc = orderDocs[0];
 
-      // Link the payment document with the order
       await Payment.findByIdAndUpdate(
         paymentDoc._id,
         { order: orderDoc._id },

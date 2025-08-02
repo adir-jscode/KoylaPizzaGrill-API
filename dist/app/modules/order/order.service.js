@@ -540,8 +540,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
-                    order: undefined, // To be linked later
-                    transaction: transactionId,
+                    order: undefined,
+                    transactionId: transactionId,
                     amount: total,
                     status: payment_interface_1.PAYMENT_STATUS.UNPAID,
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CASH,
