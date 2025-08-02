@@ -31,7 +31,7 @@ const generateOrderNumber = () => {
     return `KPG-${Date.now()}`;
 };
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d;
     const transactionId = getTransactionId();
     const session = yield order_model_1.Order.startSession();
     session.startTransaction();
@@ -42,44 +42,44 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             const menuItem = yield menuItem_model_1.MenuItem.findById(orderItem.menuItemId).lean();
             if (!menuItem)
                 throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, `Menu item ${orderItem.menuItemId} not found.`);
-            const basePrice = menuItem.price;
+            let basePrice = menuItem.price;
             let primaryOptPrice = 0;
             if (orderItem.primaryOption) {
                 const foundOpt = menuItem.primaryOption.options.find((opt) => opt.name === orderItem.primaryOption.name);
-                primaryOptPrice = (_a = foundOpt === null || foundOpt === void 0 ? void 0 : foundOpt.price) !== null && _a !== void 0 ? _a : 0;
+                basePrice = primaryOptPrice = (_a = foundOpt === null || foundOpt === void 0 ? void 0 : foundOpt.price) !== null && _a !== void 0 ? _a : 0;
             }
-            // Calculate secondary options total price
-            let secondaryOptTotal = 0;
+            // Prepare secondaryOptions with individual prices
+            let secondaryOptionsWithPrice = undefined;
+            let secondaryTotal = 0;
             if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
-                for (const so of orderItem.secondaryOptions) {
-                    const foundSec = menuItem.secondaryOptions.find((sec) => sec.name === so.name);
-                    if (foundSec) {
-                        const foundPrice = (_d = (_c = (_b = foundSec.options.find((opt) => opt.name === so.name)) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : so.price) !== null && _d !== void 0 ? _d : 0;
-                        secondaryOptTotal += foundPrice;
-                    }
-                    else {
-                        secondaryOptTotal += (_e = so.price) !== null && _e !== void 0 ? _e : 0;
-                    }
-                }
+                secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
+                    var _a, _b, _c, _d;
+                    const foundSecondary = (_a = menuItem === null || menuItem === void 0 ? void 0 : menuItem.secondaryOptions) === null || _a === void 0 ? void 0 : _a.find((ms) => ms.name === so.name);
+                    const optPrice = (_d = (_c = (_b = foundSecondary === null || foundSecondary === void 0 ? void 0 : foundSecondary.options.find((opt) => opt.name === so.name)) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : so.price) !== null && _d !== void 0 ? _d : 0;
+                    secondaryTotal += optPrice;
+                    return Object.assign(Object.assign({}, so), { price: optPrice });
+                });
             }
-            // Calculate addons total price
+            // Prepare addons with individual prices
+            let addonsWithPrice = undefined;
             let addonsTotal = 0;
             if (orderItem.addons && menuItem.addons) {
-                for (const add of orderItem.addons) {
-                    const foundAdd = menuItem.addons.find((a) => a.name === add.name);
-                    addonsTotal += (_g = (_f = foundAdd === null || foundAdd === void 0 ? void 0 : foundAdd.price) !== null && _f !== void 0 ? _f : add.price) !== null && _g !== void 0 ? _g : 0;
-                }
+                addonsWithPrice = orderItem.addons.map((addon) => {
+                    var _a, _b, _c;
+                    const foundAddon = (_a = menuItem === null || menuItem === void 0 ? void 0 : menuItem.addons) === null || _a === void 0 ? void 0 : _a.find((ma) => ma.name === addon.name);
+                    const addonPrice = (_c = (_b = foundAddon === null || foundAddon === void 0 ? void 0 : foundAddon.price) !== null && _b !== void 0 ? _b : addon.price) !== null && _c !== void 0 ? _c : 0;
+                    addonsTotal += addonPrice;
+                    return Object.assign(Object.assign({}, addon), { price: addonPrice });
+                });
             }
-            const totalPrice = (basePrice + primaryOptPrice + secondaryOptTotal + addonsTotal) *
-                orderItem.quantity;
+            const totalPrice = (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
             subtotal += totalPrice;
-            preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: orderItem.secondaryOptions, addons: orderItem.addons, totalPrice }));
+            preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
         }
-        // Calculate other charges
         let deliveryFee = 0;
         if (payload.orderType === order_interface_1.OrderType.DELIVERY)
             deliveryFee = 5; // adjust as needed
-        const tip = (_h = payload.tip) !== null && _h !== void 0 ? _h : 0;
+        const tip = (_b = payload.tip) !== null && _b !== void 0 ? _b : 0;
         let discount = 0;
         // Valid coupon application
         if (payload.couponCode) {
@@ -90,6 +90,9 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 validTo: { $gte: new Date() },
                 $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
             });
+            if (!coupon) {
+                throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "Invalid coupon code");
+            }
             if (coupon && subtotal >= coupon.minOrder) {
                 if (coupon.type === coupons_interface_1.Type.PERCENTAGE) {
                     discount = subtotal * (coupon.value / 100);
@@ -175,7 +178,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 throw new Error("Failed to update payment document with PaymentIntent info");
             }
             updatedPaymentDoc = updatedPayment;
-            clientSecret = (_j = paymentIntent.client_secret) !== null && _j !== void 0 ? _j : undefined;
+            clientSecret = (_c = paymentIntent.client_secret) !== null && _c !== void 0 ? _c : undefined;
         }
         // Commit and close session **before reading order again**
         yield session.commitTransaction();
@@ -183,10 +186,44 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
         const latestOrder = yield order_model_1.Order.findById(orderDoc._id);
         const latestPayment = yield payment_model_1.Payment.findById(paymentDoc._id);
+        // if (latestOrder && latestOrder.customerEmail) {
+        //   try {
+        //     await sendEmail({
+        //       to: latestOrder.customerEmail,
+        //       subject: `Your Order Confirmation: ${latestOrder.orderNumber}`,
+        //       templateName: "order", // Name of your .ejs file (without .ejs)
+        //       templateData: {
+        //         customerName: latestOrder.customerName,
+        //         orderNumber: latestOrder.orderNumber,
+        //         orderDateTime: new Date().toLocaleString("en-US", {
+        //           timeZone: "Asia/Dhaka",
+        //         }),
+        //         orderType: latestOrder.orderType,
+        //         deliveryAddress: latestOrder.deliveryAddress,
+        //         specialInstructions: latestOrder.specialInstructions,
+        //         status: latestOrder.status,
+        //         orderItems: latestOrder.orderItems,
+        //         subtotal: latestOrder.subtotal,
+        //         deliveryFee: latestOrder.deliveryFee || 0,
+        //         tip: latestOrder.tip || 0,
+        //         discount: latestOrder.discount || 0,
+        //         tax: latestOrder.tax,
+        //         total: latestOrder.total,
+        //         couponCode: latestOrder.couponCode,
+        //       },
+        //     });
+        //   } catch (emailError: any) {
+        //     // Log, but don't block order completion
+        //     console.error(
+        //       "Order confirmation email failed:",
+        //       emailError?.message || emailError
+        //     );
+        //   }
+        // }
         // Return freshest docs
         return {
             order: latestOrder !== null && latestOrder !== void 0 ? latestOrder : orderDoc,
-            payment: (_k = latestPayment !== null && latestPayment !== void 0 ? latestPayment : updatedPaymentDoc) !== null && _k !== void 0 ? _k : paymentDoc,
+            payment: (_d = latestPayment !== null && latestPayment !== void 0 ? latestPayment : updatedPaymentDoc) !== null && _d !== void 0 ? _d : paymentDoc,
             clientSecret,
         };
     }

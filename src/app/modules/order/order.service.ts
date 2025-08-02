@@ -17,6 +17,7 @@ import httpStatus from "http-status-codes";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
 import { FilterQuery } from "mongoose";
 import { sendEmail } from "../../utils/sendMail";
+import { RestaurantSettings } from "../restaurantSettings/restaurantSettings.model";
 
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -44,14 +45,14 @@ export const createOrder = async (
           `Menu item ${orderItem.menuItemId} not found.`
         );
 
-      const basePrice = menuItem.price;
+      let basePrice = menuItem.price;
 
       let primaryOptPrice = 0;
       if (orderItem.primaryOption) {
         const foundOpt = menuItem.primaryOption.options.find(
           (opt) => opt.name === orderItem.primaryOption.name
         );
-        primaryOptPrice = foundOpt?.price ?? 0;
+        basePrice = primaryOptPrice = foundOpt?.price ?? 0;
       }
 
       // Prepare secondaryOptions with individual prices
@@ -88,8 +89,7 @@ export const createOrder = async (
       }
 
       const totalPrice =
-        (basePrice + primaryOptPrice + secondaryTotal + addonsTotal) *
-        orderItem.quantity;
+        (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
 
       subtotal += totalPrice;
 
@@ -139,7 +139,8 @@ export const createOrder = async (
     }
 
     discount = Math.max(discount, 0);
-    const TAX_RATE = 0.0875; //assume
+    const settings = await RestaurantSettings.findOne();
+    const TAX_RATE = settings?.taxRate as number;
     const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
 
     const total = Number(

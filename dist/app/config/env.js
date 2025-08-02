@@ -24,6 +24,11 @@ const loadEnviromentVariables = () => {
         "JWT_REFRESH_EXPIRES",
         "FRONTEND_URL",
         "VERCEL_URL",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_HOST",
+        "SMTP_FROM",
     ];
     requiredEnvVariables.forEach((key) => {
         if (!process.env[key]) {
@@ -47,6 +52,13 @@ const loadEnviromentVariables = () => {
         JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES,
         FRONTEND_URL: process.env.FRONTEND_URL,
         VERCEL_URL: process.env.VERCEL_URL,
+        EMAIL_SENDER: {
+            SMTP_USER: process.env.SMTP_USER,
+            SMTP_PASS: process.env.SMTP_PASS,
+            SMTP_PORT: process.env.SMTP_PORT,
+            SMTP_HOST: process.env.SMTP_HOST,
+            SMTP_FROM: process.env.SMTP_FROM,
+        },
     };
 };
 exports.envVars = loadEnviromentVariables();

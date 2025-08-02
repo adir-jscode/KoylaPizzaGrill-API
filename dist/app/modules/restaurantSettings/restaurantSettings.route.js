@@ -40,7 +40,7 @@ const validateRequest_1 = require("../../middlewares/validateRequest");
 const restaurantSettings_validation_1 = require("./restaurantSettings.validation");
 const checkAuth_1 = require("../../middlewares/checkAuth");
 const router = (0, express_1.Router)();
-router.get("/", checkAuth_1.checkAuth, ctrl.getSettings);
+router.get("/", ctrl.getSettings);
 router.post("/add-settings", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(restaurantSettings_validation_1.restaurantSettingsZodSchema), ctrl.addSettings);
 router.put("/", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(restaurantSettings_validation_1.restaurantSettingsZodSchema), ctrl.updateSettings);
 exports.RestaurantSettingsRoutes = router;
