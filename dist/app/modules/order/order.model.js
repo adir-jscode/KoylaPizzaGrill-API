@@ -83,6 +83,7 @@ const OrderSchema = new mongoose_1.Schema({
     statusHistory: { type: [StatusHistorySchema], default: [] },
     specialInstructions: { type: String },
     couponCode: { type: String },
+    paymentIntentId: { type: String },
     payment: { type: mongoose_1.Types.ObjectId, ref: "Payment" },
 }, { timestamps: true, versionKey: false });
 exports.Order = (0, mongoose_1.model)("Order", OrderSchema);

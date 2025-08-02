@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toggleOrderStatus = exports.getOrderHistory = exports.stripeWebhookHandler = exports.changePaymentOrderStatus = exports.getFilteredOrders = exports.getAllOrders = exports.createOrderController = void 0;
+exports.toggleOrderStatus = exports.getOrderHistory = exports.stripeWebhookHandler = exports.changePaymentOrderStatus = exports.getFilteredOrders = exports.getAllOrders = exports.createOrderController = exports.createPaymentIntent = void 0;
 const order_service_1 = require("./order.service");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const sendResponse_1 = require("../../utils/sendResponse");
@@ -21,6 +21,37 @@ const payment_interface_1 = require("../payment/payment.interface");
 const payment_model_1 = require("../payment/payment.model");
 const order_model_1 = require("./order.model");
 const stripe_1 = require("../../config/stripe");
+// POST /orders/payment-intent
+const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { total, customerEmail } = req.body;
+        const paymentIntent = yield stripe_1.stripe.paymentIntents.create({
+            amount: Math.round(Number(total) * 100),
+            currency: "usd",
+            payment_method_types: ["card"],
+            metadata: { tempId: Date.now().toString() },
+            receipt_email: customerEmail,
+        });
+        (0, sendResponse_1.sendResponse)(res, {
+            statusCode: http_status_codes_1.default.CREATED,
+            success: true,
+            message: "Payment intent id retrived",
+            data: {
+                paymentIntentId: paymentIntent.id,
+                clientSecret: paymentIntent.client_secret,
+            },
+        });
+        res.status(200).json({
+            success: true,
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+});
+exports.createPaymentIntent = createPaymentIntent;
 const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const payload = req.body;
@@ -32,11 +63,7 @@ const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void
             success: true,
             statusCode: http_status_codes_1.default.CREATED,
             message: "Order created successfully",
-            data: {
-                order: result.order,
-                payment: result.payment,
-                clientSecret: result.clientSecret,
-            },
+            data: null,
         });
     }
     catch (error) {

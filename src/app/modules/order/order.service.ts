@@ -649,8 +649,8 @@ export const createOrder = async (
       const paymentDocs = await Payment.create(
         [
           {
-            order: undefined, // To be linked later
-            transaction: transactionId,
+            order: undefined,
+            transactionId: transactionId,
             amount: total,
             status: PAYMENT_STATUS.UNPAID,
             paymentMethod: PAYMENT_METHOD.CASH,

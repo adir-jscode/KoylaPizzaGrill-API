@@ -33,10 +33,14 @@ export const createPaymentIntent = async (
       receipt_email: customerEmail,
     });
 
-    res.status(200).json({
+    sendResponse(res, {
+      statusCode: httpStatus.CREATED,
       success: true,
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
+      message: "Payment intent id retrived",
+      data: {
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret,
+      },
     });
   } catch (err) {
     next(err);

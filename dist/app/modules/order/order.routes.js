@@ -50,4 +50,5 @@ router.post("/stripe/webhook", express_2.default.raw({ type: "application/json" 
 router.get("/history/:id", checkAuth_1.checkAuth, orderController.getOrderHistory);
 router.put("/:id", checkAuth_1.checkAuth, orderController.toggleOrderStatus);
 router.get("/filter", checkAuth_1.checkAuth, orderController.getFilteredOrders);
+router.post("/payment-intent", orderController.createPaymentIntent);
 exports.OrderRoutes = router;
