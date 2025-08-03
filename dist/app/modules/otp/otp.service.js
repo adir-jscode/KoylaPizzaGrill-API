@@ -24,22 +24,17 @@ const generateOtp = (length = 6) => {
     return otp;
 };
 const sendOtp = (email, name) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const otp = generateOtp();
-        const redisKey = `otp:${email}`;
-        yield radis_config_1.redisClient.set(redisKey, otp, {
-            expiration: { type: "EX", value: OTP_EXPIRATION },
-        });
-        yield (0, sendMail_1.sendEmail)({
-            to: email,
-            subject: "Your OTP Code",
-            templateName: "otp",
-            templateData: { name: name, otp: otp },
-        });
-    }
-    catch (error) {
-        throw new AppError_1.default(400, "Fail to send OTP");
-    }
+    const otp = generateOtp();
+    const redisKey = `otp:${email}`;
+    yield radis_config_1.redisClient.set(redisKey, otp, {
+        expiration: { type: "EX", value: OTP_EXPIRATION },
+    });
+    yield (0, sendMail_1.sendEmail)({
+        to: email,
+        subject: "Your OTP Code",
+        templateName: "otp",
+        templateData: { name: name, otp: otp },
+    });
 });
 const verifyOtp = (email, otp) => __awaiter(void 0, void 0, void 0, function* () {
     try {

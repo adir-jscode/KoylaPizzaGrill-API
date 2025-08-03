@@ -15,12 +15,12 @@ const sendResponse_1 = require("../../utils/sendResponse");
 const sendOtp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, name } = req.body;
-        yield otp_service_1.OtpServices.sendOtp(email, name);
+        const otp = yield otp_service_1.OtpServices.sendOtp(email, name);
         (0, sendResponse_1.sendResponse)(res, {
             statusCode: 200,
             success: true,
             message: "OTP sent successfully",
-            data: null,
+            data: otp,
         });
     }
     catch (error) {

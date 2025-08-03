@@ -11,22 +11,18 @@ const generateOtp = (length = 6) => {
   return otp;
 };
 const sendOtp = async (email: string, name: string) => {
-  try {
-    const otp = generateOtp();
-    const redisKey = `otp:${email}`;
-    await redisClient.set(redisKey, otp, {
-      expiration: { type: "EX", value: OTP_EXPIRATION },
-    });
+  const otp = generateOtp();
+  const redisKey = `otp:${email}`;
+  await redisClient.set(redisKey, otp, {
+    expiration: { type: "EX", value: OTP_EXPIRATION },
+  });
 
-    await sendEmail({
-      to: email,
-      subject: "Your OTP Code",
-      templateName: "otp",
-      templateData: { name: name, otp: otp },
-    });
-  } catch (error) {
-    throw new AppError(400, "Fail to send OTP");
-  }
+  await sendEmail({
+    to: email,
+    subject: "Your OTP Code",
+    templateName: "otp",
+    templateData: { name: name, otp: otp },
+  });
 };
 const verifyOtp = async (email: string, otp: string) => {
   try {

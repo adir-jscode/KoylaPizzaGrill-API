@@ -18,35 +18,36 @@ const nodemailer_1 = __importDefault(require("nodemailer"));
 const path_1 = __importDefault(require("path"));
 const env_1 = require("../config/env");
 const AppError_1 = __importDefault(require("../errorHelpers/AppError"));
-const transporter = nodemailer_1.default.createTransport({
-    // port: envVars.EMAIL_SENDER.SMTP_PORT,
-    secure: true,
-    auth: {
-        user: env_1.envVars.EMAIL_SENDER.SMTP_USER,
-        pass: env_1.envVars.EMAIL_SENDER.SMTP_PASS,
-    },
-    port: Number(env_1.envVars.EMAIL_SENDER.SMTP_PORT),
-    host: env_1.envVars.EMAIL_SENDER.SMTP_HOST,
-});
 const sendEmail = (_a) => __awaiter(void 0, [_a], void 0, function* ({ to, subject, templateName, templateData, attachments, }) {
     try {
         const templatePath = path_1.default.join(__dirname, `templates/${templateName}.ejs`);
         const html = yield ejs_1.default.renderFile(templatePath, templateData);
-        const info = yield transporter.sendMail({
+        const secure = Number(env_1.envVars.EMAIL_SENDER.SMTP_PORT) === 465;
+        yield nodemailer_1.default
+            .createTransport({
+            host: env_1.envVars.EMAIL_SENDER.SMTP_HOST,
+            port: Number(env_1.envVars.EMAIL_SENDER.SMTP_PORT),
+            secure,
+            auth: {
+                user: env_1.envVars.EMAIL_SENDER.SMTP_USER,
+                pass: env_1.envVars.EMAIL_SENDER.SMTP_PASS,
+            },
+        })
+            .sendMail({
             from: env_1.envVars.EMAIL_SENDER.SMTP_FROM,
-            to: to,
-            subject: subject,
-            html: html,
+            to,
+            subject,
+            html,
             attachments: attachments === null || attachments === void 0 ? void 0 : attachments.map((attachment) => ({
                 filename: attachment.filename,
                 content: attachment.content,
                 contentType: attachment.contentType,
             })),
         });
-        console.log(`\u2709\uFE0F Email sent to ${to}: ${info.messageId}`);
+        console.log(`✉️ Email sent to ${to}`);
     }
     catch (error) {
-        console.log("email sending error", error.message);
+        console.error("email sending error", error.message);
         throw new AppError_1.default(401, "Email error");
     }
 });
