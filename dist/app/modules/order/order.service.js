@@ -391,25 +391,26 @@ const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0
 });
 exports.changeOrderStatus = changeOrderStatus;
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const transactionId = getTransactionId();
     const session = yield order_model_1.Order.startSession();
-    session.startTransaction();
+    yield session.startTransaction();
     try {
         let subtotal = 0;
         let preparedItems = [];
-        // --- Prepare items with correct pricing ---
+        // Calculate item prices and prepare items for order
         for (const orderItem of payload.orderItems) {
             const menuItem = yield menuItem_model_1.MenuItem.findById(orderItem.menuItemId).lean();
             if (!menuItem)
                 throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, `Menu item ${orderItem.menuItemId} not found.`);
-            let basePrice = menuItem.price ? menuItem.price : 0;
+            // Base price from menu item
+            let basePrice = (_a = menuItem.price) !== null && _a !== void 0 ? _a : 0;
+            // Primary option price
             let primaryOptPrice = 0;
             if (orderItem.primaryOption) {
-                const foundOpt = menuItem.primaryOption.options.find((opt) => opt.name === orderItem.primaryOption.name);
-                basePrice = (_a = foundOpt === null || foundOpt === void 0 ? void 0 : foundOpt.price) !== null && _a !== void 0 ? _a : 0;
+                basePrice = (_c = (_b = orderItem.primaryOption) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : 0;
             }
-            // --- Secondary options with individual prices ---
+            // Secondary options with individual prices and totals
             let secondaryOptionsWithPrice = undefined;
             let secondaryTotal = 0;
             if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
@@ -421,7 +422,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     return Object.assign(Object.assign({}, so), { price: optPrice });
                 });
             }
-            // --- Addons with individual prices ---
+            // Addons with individual prices and totals
             let addonsWithPrice = undefined;
             let addonsTotal = 0;
             if (orderItem.addons && menuItem.addons) {
@@ -433,15 +434,20 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     return Object.assign(Object.assign({}, addon), { price: addonPrice });
                 });
             }
+            // Calculate total price for this order item (including quantity)
             const totalPrice = (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
             subtotal += totalPrice;
+            // Push prepared item to array
             preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
         }
-        // --- Other charges and order totals ---
-        let deliveryFee = payload.orderType === order_interface_1.OrderType.DELIVERY ? 5 : 0;
-        const tip = (_b = payload.tip) !== null && _b !== void 0 ? _b : 0;
+        // Calculate delivery fee
+        const resSettings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
+        const deliveryFee = payload.orderType === order_interface_1.OrderType.DELIVERY
+            ? payload.deliveryFee
+            : 0;
+        const tip = (_d = payload.tip) !== null && _d !== void 0 ? _d : 0;
         let discount = 0;
-        // --- Coupon ---
+        // Apply coupon discount if valid
         if (payload.couponCode) {
             const coupon = yield coupons_model_1.Coupon.findOne({
                 code: payload.couponCode,
@@ -452,7 +458,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             });
             if (!coupon)
                 throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "Invalid coupon code");
-            if (subtotal >= coupon.minOrder) {
+            if (coupon && subtotal >= coupon.minOrder) {
                 if (coupon.type === coupons_interface_1.Type.PERCENTAGE) {
                     discount = subtotal * (coupon.value / 100);
                     if (coupon.maxDiscount)
@@ -465,11 +471,11 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         }
         discount = Math.max(discount, 0);
         const settings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
-        const TAX_RATE = (settings === null || settings === void 0 ? void 0 : settings.taxRate) / 100;
-        const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
+        const TAX_RATE = settings === null || settings === void 0 ? void 0 : settings.taxRate;
+        const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
+        // Calculate grand total
         const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
         const orderNumber = generateOrderNumber();
-        // --- Set statuses ---
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         let orderStatus = "PENDING";
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
@@ -491,10 +497,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 ]
                 : []),
         ];
-        // --------------------------
-        // CARD PAYMENT FLOW
-        // --------------------------
-        // CARD PAYMENT FLOW
+        // CARD PAYMENT
         let paymentDoc;
         let orderDoc;
         const { paymentIntentId } = payload;
@@ -530,12 +533,9 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                         { status: "CONFIRMED", updatedAt: new Date().toISOString() },
                     ], payment: paymentDoc._id }),
             ], { session });
-            orderDoc = orderDocs[0]; // <-- correctly accessed after await
+            orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
         }
-        // --------------------------
-        // CASH PAYMENT FLOW
-        // --------------------------
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             const paymentDocs = yield payment_model_1.Payment.create([
@@ -547,9 +547,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CASH,
                 },
             ], { session });
-            // Access the first created document safely after await
             const paymentDoc = paymentDocs[0];
-            // Create order document (await and pick first element)
             const orderDocs = yield order_model_1.Order.create([
                 Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
                     tax,
@@ -558,7 +556,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     total, status: orderStatus, statusHistory, payment: paymentDoc._id }),
             ], { session });
             const orderDoc = orderDocs[0];
-            // Link the payment document with the order
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
         }
         yield session.commitTransaction();

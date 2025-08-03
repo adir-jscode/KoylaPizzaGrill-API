@@ -8,6 +8,7 @@ import { RestaurantSettingsRoutes } from "../modules/restaurantSettings/restaura
 import { ScheduledClosingRoutes } from "../modules/scheduledClosing/scheduledClosing.route";
 import { RestaurantHourRoutes } from "../modules/restaurantHour/restaurantHour.route";
 import { OrderRoutes } from "../modules/order/order.routes";
+import { OtpRoutes } from "../modules/otp/otp.route";
 
 export const router = Router();
 
@@ -47,6 +48,10 @@ const moduleRoutes = [
   {
     path: "/order",
     route: OrderRoutes,
+  },
+  {
+    path: "/otp",
+    route: OtpRoutes,
   },
 ];
 

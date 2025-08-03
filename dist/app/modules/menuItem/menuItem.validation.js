@@ -26,7 +26,7 @@ exports.createMenuItemZodSchema = zod_1.z.object({
     description: zod_1.z.string().optional(),
     imageUrl: zod_1.z.string().url().optional(),
     price: zod_1.z.number().positive(),
-    primaryOption: primaryOptionSchema,
+    primaryOption: primaryOptionSchema.optional(),
     secondaryOptions: zod_1.z.array(secondaryOptionSchema).optional(),
     addons: zod_1.z.array(addonSchema).optional(),
     tags: zod_1.z.array(zod_1.z.string()).optional(),

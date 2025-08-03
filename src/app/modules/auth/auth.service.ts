@@ -59,7 +59,7 @@ const resetPassword = async (
     user!.password as string
   );
   if (!isOldPasswordMatch) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Old Password does not match");
+    throw new AppError(httpStatus.BAD_REQUEST, "Old Password does not match");
   }
 
   user!.password = await bcryptjs.hash(

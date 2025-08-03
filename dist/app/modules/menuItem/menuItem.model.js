@@ -36,7 +36,7 @@ const MenuItemSchema = new mongoose_1.Schema({
     description: { type: String },
     imageUrl: { type: String },
     price: { type: Number, required: true },
-    primaryOption: { type: PrimaryOptionSchema, required: true },
+    primaryOption: { type: PrimaryOptionSchema },
     secondaryOptions: { type: [SecondaryOptionSchema], default: [] },
     addons: { type: [AddonSchema], default: [] },
     tags: { type: [String], default: [] },

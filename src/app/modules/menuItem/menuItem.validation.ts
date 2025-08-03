@@ -28,7 +28,7 @@ export const createMenuItemZodSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url().optional(),
   price: z.number().positive(),
-  primaryOption: primaryOptionSchema,
+  primaryOption: primaryOptionSchema.optional(),
   secondaryOptions: z.array(secondaryOptionSchema).optional(),
   addons: z.array(addonSchema).optional(),
   tags: z.array(z.string()).optional(),
