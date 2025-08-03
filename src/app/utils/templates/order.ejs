@@ -2,122 +2,150 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Your Order Confirmation</title>
+    <title>Your Koyla Pizza Grill Order</title>
+    <style>
+      body {
+        background: #f7f7f7;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        background: #fff;
+        max-width: 600px;
+        margin: 24px auto;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px #eee;
+      }
+      .header {
+        background: #283e44;
+        color: #fff;
+        padding: 18px 32px;
+        border-radius: 6px 6px 0 0;
+      }
+      .brand {
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      .content {
+        padding: 24px 32px;
+        color: #232323;
+      }
+      h2 {
+        color: #222;
+        margin-top: 0;
+      }
+      .footer {
+        padding: 20px 32px;
+        font-size: 13px;
+        color: #888;
+        text-align: center;
+      }
+      table.order-summary {
+        width: 100%;
+        margin: 18px 0;
+      }
+      .order-summary td {
+        padding: 6px;
+      }
+    </style>
   </head>
-  <body style="background: #f7f7f7; margin: 0; padding: 0">
-    <table
-      width="100%"
-      cellpadding="0"
-      cellspacing="0"
-      style="font-family: Arial, sans-serif; background: #f7f7f7"
-    >
-      <tr>
-        <td>
-          <table
-            width="480"
-            cellpadding="0"
-            cellspacing="0"
-            align="center"
-            style="margin: 24px auto; background: #fff; border-radius: 6px"
+  <body>
+    <div class="container">
+      <div class="header">
+        <span class="brand">Koyla Pizza Grill</span>
+      </div>
+      <div class="content">
+        <h2>Your order has been received</h2>
+        <p>Hi <b><%= customerName %></b>,</p>
+        <p>
+          Your order (<b>#<%= orderNumber %></b>) was placed on <%=
+          orderDateTime %>.
+        </p>
+
+        <table class="order-summary" cellpadding="0" cellspacing="0">
+          <% orderItems.forEach(function(item) { %>
+          <tr>
+            <td>
+              <b><%= item.name %></b> &times; <%= item.quantity %> <% if
+              (item.primaryOption) { %> <br /><span style="font-size: 12px"
+                >Option: <%= item.primaryOption.name %></span
+              >
+              <% } %> <% if (item.addons && item.addons.length) { %>
+              <br /><span style="font-size: 12px"
+                >Addons: <%= item.addons.map(a => a.name).join(', ') %></span
+              >
+              <% } %>
+            </td>
+            <td align="right">$<%= item.totalPrice.toFixed(2) %></td>
+          </tr>
+          <% }); %>
+          <tr>
+            <td colspan="2">
+              <hr style="border: none; border-top: 1px solid #eee" />
+            </td>
+          </tr>
+          <tr>
+            <td>Subtotal:</td>
+            <td align="right">$<%= subtotal.toFixed(2) %></td>
+          </tr>
+          <% if (deliveryFee && deliveryFee > 0) { %>
+          <tr>
+            <td>Delivery Fee:</td>
+            <td align="right">$<%= deliveryFee.toFixed(2) %></td>
+          </tr>
+          <% } %> <% if (tip && tip > 0) { %>
+          <tr>
+            <td>Tip:</td>
+            <td align="right">$<%= tip.toFixed(2) %></td>
+          </tr>
+          <% } %> <% if (discount && discount > 0) { %>
+          <tr>
+            <td>Discount:</td>
+            <td align="right">-$<%= discount.toFixed(2) %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td>Tax:</td>
+            <td align="right">$<%= tax.toFixed(2) %></td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold">Total:</td>
+            <td align="right" style="font-weight: bold">
+              $<%= total.toFixed(2) %>
+            </td>
+          </tr>
+        </table>
+
+        <p>
+          <b>Order Type:</b> <%= orderType %><br />
+          <% if (deliveryAddress) { %><b>Delivery Address:</b> <%=
+          deliveryAddress %><br /><% } %> <% if (specialInstructions) { %><b
+            >Special Instructions:</b
           >
-            <tr>
-              <td style="padding: 24px 28px">
-                <h2 style="margin-top: 0; color: #222">
-                  Order Confirmation - Koyla Pizza Grill
-                </h2>
-                <p style="margin-bottom: 10px">
-                  Hello <b><%= customerName %></b>,
-                </p>
-                <p style="margin-bottom: 10px">
-                  Thank you for your order <b><%= orderNumber %></b> placed on
-                  <%= orderDateTime %>.
-                </p>
-                <table
-                  width="100%"
-                  cellpadding="2"
-                  cellspacing="0"
-                  style="margin: 16px 0; font-size: 15px"
-                >
-                  <% orderItems.forEach(function(item) { %>
-                  <tr>
-                    <td>
-                      <b><%= item.name %></b> x <%= item.quantity %> <% if
-                      (item.primaryOption) { %><br />
-                      <span style="font-size: 12px"
-                        >Option: <%= item.primaryOption.name %></span
-                      >
-                      <% } %> <% if (item.addons && item.addons.length) { %><br />
-                      <span style="font-size: 12px"
-                        >Addons: <%= item.addons.map(a => a.name).join(', ')
-                        %></span
-                      >
-                      <% } %>
-                    </td>
-                    <td align="right" style="white-space: nowrap">
-                      $<%= item.totalPrice.toFixed(2) %>
-                    </td>
-                  </tr>
-                  <% }); %>
-                </table>
-                <table
-                  width="100%"
-                  cellpadding="2"
-                  cellspacing="0"
-                  style="font-size: 15px"
-                >
-                  <tr>
-                    <td>Subtotal:</td>
-                    <td align="right">$<%= subtotal.toFixed(2) %></td>
-                  </tr>
-                  <% if (deliveryFee && deliveryFee > 0) { %>
-                  <tr>
-                    <td>Delivery Fee:</td>
-                    <td align="right">$<%= deliveryFee.toFixed(2) %></td>
-                  </tr>
-                  <% } %> <% if (tip && tip > 0) { %>
-                  <tr>
-                    <td>Tip:</td>
-                    <td align="right">$<%= tip.toFixed(2) %></td>
-                  </tr>
-                  <% } %> <% if (discount && discount > 0) { %>
-                  <tr>
-                    <td>Discount:</td>
-                    <td align="right">-$<%= discount.toFixed(2) %></td>
-                  </tr>
-                  <% } %>
-                  <tr>
-                    <td>Tax:</td>
-                    <td align="right">$<%= tax.toFixed(2) %></td>
-                  </tr>
-                  <tr>
-                    <td style="font-weight: bold">Total:</td>
-                    <td align="right" style="font-weight: bold">
-                      $<%= total.toFixed(2) %>
-                    </td>
-                  </tr>
-                </table>
-                <p style="margin: 18px 0 6px 0">
-                  <b>Order Type:</b> <%= orderType %><br />
-                  <% if (deliveryAddress) { %>
-                  <b>Delivery Address:</b> <%= deliveryAddress %><br />
-                  <% } %> <% if (specialInstructions) { %>
-                  <b>Special Instructions:</b> <%= specialInstructions %><br />
-                  <% } %>
-                  <b>Status:</b> <%= status %>
-                </p>
-                <p style="font-size: 14px; color: #555">
-                  For questions, reply to this email or call
-                  <b>+880123456789</b>.
-                </p>
-                <p style="font-size: 12px; color: #aaa; margin-top: 28px">
-                  &copy; <%= new Date().getFullYear() %> Koyla Pizza Grill. All
-                  rights reserved.
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+          <%= specialInstructions %><br /><% } %> <b>Status:</b> <%= status %>
+        </p>
+        <p style="font-size: 14px; color: #555">
+          Having an issue? You can reply directly to this email or call us at
+          <b>+880123456789</b>.
+        </p>
+      </div>
+      <div class="footer">
+        This is an order confirmation email from Koyla Pizza Grill (<a
+          href="https://koylapizza.com"
+          rel="noopener"
+          style="color: #888"
+          >koylapizza.com</a
+        >).<br />
+        &copy; <%= new Date().getFullYear() %> Koyla Pizza Grill. All rights
+        reserved.<br />
+        <address>Block D, Banani, Dhaka, Bangladesh</address>
+        <div style="margin-top: 8px">
+          If you received this by mistake, or want fewer emails,
+          <a href="#" style="color: #888">let us know</a>.
+        </div>
+      </div>
+    </div>
   </body>
 </html>

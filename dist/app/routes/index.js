@@ -11,6 +11,7 @@ const restaurantSettings_route_1 = require("../modules/restaurantSettings/restau
 const scheduledClosing_route_1 = require("../modules/scheduledClosing/scheduledClosing.route");
 const restaurantHour_route_1 = require("../modules/restaurantHour/restaurantHour.route");
 const order_routes_1 = require("../modules/order/order.routes");
+const otp_route_1 = require("../modules/otp/otp.route");
 exports.router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -48,6 +49,10 @@ const moduleRoutes = [
     {
         path: "/order",
         route: order_routes_1.OrderRoutes,
+    },
+    {
+        path: "/otp",
+        route: otp_route_1.OtpRoutes,
     },
 ];
 moduleRoutes.forEach((route) => {

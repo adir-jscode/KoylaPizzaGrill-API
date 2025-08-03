@@ -59,7 +59,7 @@ const resetPassword = (oldPassword, newPassword, decodedToken) => __awaiter(void
     const user = yield admin_model_1.Admin.findOne({ email });
     const isOldPasswordMatch = yield bcryptjs_1.default.compare(oldPassword, user.password);
     if (!isOldPasswordMatch) {
-        throw new AppError_1.default(http_status_codes_1.default.UNAUTHORIZED, "Old Password does not match");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Old Password does not match");
     }
     user.password = yield bcryptjs_1.default.hash(newPassword, Number(env_1.envVars.BCRYPT_SALT_ROUND));
     user.save();

@@ -17,6 +17,8 @@ import httpStatus from "http-status-codes";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
 import { Document, FilterQuery } from "mongoose";
 import { RestaurantSettings } from "../restaurantSettings/restaurantSettings.model";
+import { OtpServices } from "../otp/otp.service";
+import { sendEmail } from "../../utils/sendMail";
 
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -544,16 +546,19 @@ export const createOrder = async (
     const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
 
     // Calculate grand total
-    const total = Number(
-      (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
-    );
+    const total = Number(subtotal - discount + deliveryFee + tax + tip);
+    console.log(subtotal);
+    console.log(discount);
+    console.log(deliveryFee);
+    console.log(tax);
+    console.log(tip);
+    console.log(total);
     const orderNumber = generateOrderNumber();
 
     let paymentStatus = PAYMENT_STATUS.UNPAID;
     let orderStatus: IStatusHistory["status"] = "PENDING";
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
       paymentStatus = PAYMENT_STATUS.UNPAID;
-      orderStatus = "CONFIRMED";
     }
 
     // --- Order status history ---
@@ -562,14 +567,6 @@ export const createOrder = async (
         status: "PENDING" as IStatusHistory["status"],
         updatedAt: new Date().toISOString(),
       },
-      ...(orderStatus === "CONFIRMED"
-        ? [
-            {
-              status: "CONFIRMED" as IStatusHistory["status"],
-              updatedAt: new Date().toISOString(),
-            },
-          ]
-        : []),
     ];
 
     // CARD PAYMENT
@@ -588,7 +585,8 @@ export const createOrder = async (
       const paymentIntent = await stripe.paymentIntents.retrieve(
         paymentIntentId as string
       );
-      if (paymentIntent.status !== "succeeded") {
+      console.log(paymentIntent);
+      if (paymentIntent.status === "succeeded") {
         throw new AppError(
           httpStatus.PAYMENT_REQUIRED,
           "Stripe payment not completed"
@@ -596,6 +594,7 @@ export const createOrder = async (
       }
 
       // Await Payment.create and then get first document
+
       const paymentDocs = await Payment.create(
         [
           {
@@ -640,10 +639,38 @@ export const createOrder = async (
         { order: orderDoc._id },
         { session }
       );
+      await sendEmail({
+        to: payload.customerEmail as string,
+        subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
+        templateName: "order", // Match your template file name here
+        templateData: {
+          customerName: payload.customerName,
+          orderNumber: orderNumber,
+          orderDateTime: new Date().toLocaleString("en-US", {
+            timeZone: "Asia/Dhaka",
+          }),
+          orderItems: preparedItems,
+          subtotal: Number(subtotal),
+          deliveryFee: Number(deliveryFee),
+          tip: Number(tip),
+          discount: Number(discount),
+          tax: Number(tax), // Add tax
+          total: Number(total), // Add total
+          orderType: payload.orderType,
+          deliveryAddress: payload.deliveryAddress ?? "",
+          specialInstructions: payload.specialInstructions ?? "",
+          status: "CONFIRMED", // Or dynamic status as needed
+        },
+      });
     }
 
     // CASH PAYMENT FLOW
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
+      await OtpServices.sendOtp(
+        payload.customerEmail as string,
+        payload.customerName
+      );
+
       const paymentDocs = await Payment.create(
         [
           {
