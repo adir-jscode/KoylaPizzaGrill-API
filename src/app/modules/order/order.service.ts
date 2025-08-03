@@ -586,7 +586,7 @@ export const createOrder = async (
         paymentIntentId as string
       );
       console.log(paymentIntent);
-      if (paymentIntent.status === "succeeded") {
+      if (paymentIntent.status !== "succeeded") {
         throw new AppError(
           httpStatus.PAYMENT_REQUIRED,
           "Stripe payment not completed"
@@ -654,22 +654,22 @@ export const createOrder = async (
           deliveryFee: Number(deliveryFee),
           tip: Number(tip),
           discount: Number(discount),
-          tax: Number(tax), // Add tax
-          total: Number(total), // Add total
+          tax: Number(tax),
+          total: Number(total),
           orderType: payload.orderType,
           deliveryAddress: payload.deliveryAddress ?? "",
           specialInstructions: payload.specialInstructions ?? "",
-          status: "CONFIRMED", // Or dynamic status as needed
+          status: "CONFIRMED",
         },
       });
     }
 
     // CASH PAYMENT FLOW
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
-      await OtpServices.sendOtp(
-        payload.customerEmail as string,
-        payload.customerName
-      );
+      // await OtpServices.sendOtp(
+      //   payload.customerEmail as string,
+      //   payload.customerName
+      // );
 
       const paymentDocs = await Payment.create(
         [

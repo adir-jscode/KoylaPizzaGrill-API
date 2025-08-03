@@ -16,23 +16,46 @@ exports.OtpServices = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const radis_config_1 = require("../../config/radis.config");
 const sendMail_1 = require("../../utils/sendMail");
+const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
+const order_model_1 = require("../order/order.model");
 const OTP_EXPIRATION = 2 * 60;
 const generateOtp = (length = 6) => {
     const otp = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length).toString();
     return otp;
 };
 const sendOtp = (email, name) => __awaiter(void 0, void 0, void 0, function* () {
-    const otp = generateOtp();
-    const redisKey = `otp:${email}`;
-    yield radis_config_1.redisClient.set(redisKey, otp, {
-        expiration: { type: "EX", value: OTP_EXPIRATION },
-    });
-    yield (0, sendMail_1.sendEmail)({
-        to: email,
-        subject: "Your OTP Code",
-        templateName: "otp",
-        templateData: { name: name, otp: otp },
-    });
+    try {
+        const otp = generateOtp();
+        const redisKey = `otp:${email}`;
+        yield radis_config_1.redisClient.set(redisKey, otp, {
+            expiration: { type: "EX", value: OTP_EXPIRATION },
+        });
+        yield (0, sendMail_1.sendEmail)({
+            to: email,
+            subject: "Your OTP Code",
+            templateName: "otp",
+            templateData: { name: name, otp: otp },
+        });
+    }
+    catch (error) {
+        throw new AppError_1.default(400, "Fail to send OTP");
+    }
 });
-const verifyOtp = () => __awaiter(void 0, void 0, void 0, function* () { });
+const verifyOtp = (email, otp) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const redisKey = `otp:${email}`;
+        const savedOtp = yield radis_config_1.redisClient.get(redisKey);
+        if (!savedOtp) {
+            throw new AppError_1.default(401, "Invalid otp");
+        }
+        if (savedOtp === otp) {
+            throw new AppError_1.default(401, "Invalid otp");
+        }
+        yield order_model_1.Order.updateOne({ customerEmail: email }, { status: "CONFIRMED" }, { runValidators: true });
+        yield radis_config_1.redisClient.del(redisKey);
+    }
+    catch (error) {
+        throw new AppError_1.default(400, "Fail to verify OTP");
+    }
+});
 exports.OtpServices = { sendOtp, verifyOtp };

@@ -25,6 +25,7 @@ const order_model_1 = require("./order.model");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const date_fns_1 = require("date-fns");
 const restaurantSettings_model_1 = require("../restaurantSettings/restaurantSettings.model");
+const sendMail_1 = require("../../utils/sendMail");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
@@ -391,7 +392,7 @@ const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0
 });
 exports.changeOrderStatus = changeOrderStatus;
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f;
     const transactionId = getTransactionId();
     const session = yield order_model_1.Order.startSession();
     yield session.startTransaction();
@@ -474,13 +475,18 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         const TAX_RATE = settings === null || settings === void 0 ? void 0 : settings.taxRate;
         const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
         // Calculate grand total
-        const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
+        const total = Number(subtotal - discount + deliveryFee + tax + tip);
+        console.log(subtotal);
+        console.log(discount);
+        console.log(deliveryFee);
+        console.log(tax);
+        console.log(tip);
+        console.log(total);
         const orderNumber = generateOrderNumber();
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         let orderStatus = "PENDING";
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
-            orderStatus = "CONFIRMED";
         }
         // --- Order status history ---
         const statusHistory = [
@@ -488,14 +494,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 status: "PENDING",
                 updatedAt: new Date().toISOString(),
             },
-            ...(orderStatus === "CONFIRMED"
-                ? [
-                    {
-                        status: "CONFIRMED",
-                        updatedAt: new Date().toISOString(),
-                    },
-                ]
-                : []),
         ];
         // CARD PAYMENT
         let paymentDoc;
@@ -507,6 +505,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             }
             // Retrieve and check intent status
             const paymentIntent = yield stripe_1.stripe.paymentIntents.retrieve(paymentIntentId);
+            console.log(paymentIntent);
             if (paymentIntent.status !== "succeeded") {
                 throw new AppError_1.default(http_status_codes_1.default.PAYMENT_REQUIRED, "Stripe payment not completed");
             }
@@ -535,9 +534,36 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
+            yield (0, sendMail_1.sendEmail)({
+                to: payload.customerEmail,
+                subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
+                templateName: "order", // Match your template file name here
+                templateData: {
+                    customerName: payload.customerName,
+                    orderNumber: orderNumber,
+                    orderDateTime: new Date().toLocaleString("en-US", {
+                        timeZone: "Asia/Dhaka",
+                    }),
+                    orderItems: preparedItems,
+                    subtotal: Number(subtotal),
+                    deliveryFee: Number(deliveryFee),
+                    tip: Number(tip),
+                    discount: Number(discount),
+                    tax: Number(tax),
+                    total: Number(total),
+                    orderType: payload.orderType,
+                    deliveryAddress: (_e = payload.deliveryAddress) !== null && _e !== void 0 ? _e : "",
+                    specialInstructions: (_f = payload.specialInstructions) !== null && _f !== void 0 ? _f : "",
+                    status: "CONFIRMED",
+                },
+            });
         }
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
+            // await OtpServices.sendOtp(
+            //   payload.customerEmail as string,
+            //   payload.customerName
+            // );
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
                     order: undefined,

@@ -29,6 +29,14 @@ const sendOtp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
 });
 const verifyOtp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const { email, otp } = req.body;
+        yield otp_service_1.OtpServices.verifyOtp(email, otp);
+        (0, sendResponse_1.sendResponse)(res, {
+            statusCode: 200,
+            success: true,
+            message: "OTP verified successfully",
+            data: null,
+        });
     }
     catch (error) {
         next(error);
