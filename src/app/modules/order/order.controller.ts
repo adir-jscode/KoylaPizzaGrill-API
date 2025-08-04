@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import {
   createOrder,
-  orderHistoryById,
   updatePaymentOrderStatus,
   getAllOrder,
   changeOrderStatus,
   filteredOrders,
+  orderHistoryByOrderNumber,
 } from "./order.service";
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
@@ -168,8 +168,8 @@ export const getOrderHistory = async (
   next: NextFunction
 ) => {
   try {
-    const orderId = req.params.id;
-    const data = await orderHistoryById(orderId);
+    const orderNumber = req.params.orderNumber;
+    const data = await orderHistoryByOrderNumber(orderNumber);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

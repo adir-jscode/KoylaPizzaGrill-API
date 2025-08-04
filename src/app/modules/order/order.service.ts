@@ -19,12 +19,19 @@ import { Document, FilterQuery } from "mongoose";
 import { RestaurantSettings } from "../restaurantSettings/restaurantSettings.model";
 import { OtpServices } from "../otp/otp.service";
 import { sendEmail } from "../../utils/sendMail";
+import crypto from "crypto";
+import { CouponServices } from "../coupons/coupons.service";
 
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
-const generateOrderNumber = () => {
-  return `KPG-${Date.now()}`;
+// const generateOrderNumber = () => {
+//   return `KPG-${Date.now()}`;
+// };
+
+const generateOrderNumber = (length = 6) => {
+  const randomNum = crypto.randomInt(10 ** (length - 1), 10 ** length);
+  return `KPG-${randomNum}`;
 };
 // export const createOrder = async (
 //   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
@@ -330,10 +337,10 @@ export const updatePaymentOrderStatus = async (orderId: string) => {
   return payment;
 };
 
-export const orderHistoryById = async (orderId: string) => {
-  const order = await Order.findById(orderId);
+export const orderHistoryByOrderNumber = async (orderNumber: string) => {
+  const order = await Order.findOne({ orderNumber });
   if (!order) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Order number not found");
   }
   const sortedStatusHistory = order.statusHistory
     .slice()
@@ -526,7 +533,7 @@ export const createOrder = async (
         $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
       });
 
-      if (!coupon)
+      if (!coupon || coupon.usedCount === coupon.usageLimit)
         throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
 
       if (coupon && subtotal >= coupon.minOrder) {
@@ -538,6 +545,7 @@ export const createOrder = async (
           discount = coupon.value;
         }
       }
+      await CouponServices.updateCouponCount(coupon.code);
     }
     discount = Math.max(discount, 0);
 
@@ -564,7 +572,7 @@ export const createOrder = async (
     // --- Order status history ---
     const statusHistory: IStatusHistory[] = [
       {
-        status: "PENDING" as IStatusHistory["status"],
+        status: "CONFIRMED" as IStatusHistory["status"],
         updatedAt: new Date().toISOString(),
       },
     ];
@@ -666,10 +674,14 @@ export const createOrder = async (
 
     // CASH PAYMENT FLOW
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
-      // await OtpServices.sendOtp(
-      //   payload.customerEmail as string,
-      //   payload.customerName
-      // );
+      const verifyOtp = await OtpServices.verifyOtp(
+        payload.customerEmail as string,
+        payload.otp as string
+      );
+
+      if (!verifyOtp) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Please provide valid otp");
+      }
 
       const paymentDocs = await Payment.create(
         [

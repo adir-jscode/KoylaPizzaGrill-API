@@ -19,7 +19,7 @@ router.post(
   orderController.stripeWebhookHandler
 );
 
-router.get("/history/:id", checkAuth, orderController.getOrderHistory);
+router.get("/history/:orderNumber", checkAuth, orderController.getOrderHistory);
 router.put("/:id", checkAuth, orderController.toggleOrderStatus);
 router.get("/filter", checkAuth, orderController.getFilteredOrders);
 router.post("/payment-intent", orderController.createPaymentIntent);

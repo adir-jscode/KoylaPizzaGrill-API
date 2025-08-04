@@ -34,13 +34,8 @@ const verifyOtp = async (email: string, otp: string) => {
     if (savedOtp === otp) {
       throw new AppError(401, "Invalid otp");
     }
-
-    await Order.updateOne(
-      { customerEmail: email },
-      { status: "CONFIRMED" },
-      { runValidators: true }
-    );
     await redisClient.del(redisKey);
+    return true;
   } catch (error) {
     throw new AppError(400, "Fail to verify OTP");
   }

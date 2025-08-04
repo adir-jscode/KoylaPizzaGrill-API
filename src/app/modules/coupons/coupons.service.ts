@@ -13,6 +13,10 @@ const getAllCoupons = async () => {
   return coupons;
 };
 
+const updateCouponCount = async (code: string) => {
+  await Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
+};
+
 const updateCouponStatus = async (id: string, payload: Partial<ICoupon>) => {
   const isCouponExist = await Coupon.findById(id);
   if (!isCouponExist) {
@@ -55,4 +59,5 @@ export const CouponServices = {
   updateCouponStatus,
   updateCoupon,
   getAllCoupons,
+  updateCouponCount,
 };

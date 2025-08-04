@@ -55,4 +55,5 @@ export interface IOrder {
   paymentIntentId?: string;
   payment?: Types.ObjectId;
   paymentMethod: PAYMENT_METHOD;
+  otp?: string;
 }
