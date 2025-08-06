@@ -405,6 +405,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     yield session.startTransaction();
     try {
         console.log("from frontend payload = ", payload);
+        let orderDoc;
+        let paymentDoc;
         let subtotal = 0;
         let preparedItems = [];
         // Calculate item prices and prepare items for order
@@ -444,15 +446,21 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 });
             }
             // Calculate total price for this order item (including quantity)
+            console.log(basePrice);
+            console.log(secondaryTotal);
+            console.log(addonsTotal);
             const totalPrice = (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
             subtotal += totalPrice;
+            console.log(totalPrice);
+            console.log("subtotal", subtotal);
             // Push prepared item to array
             preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
         }
         // Calculate delivery fee
         const resSettings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
+        console.log("payload delivery charge = ", payload.deliveryCharge);
         const deliveryFee = payload.orderType === order_interface_1.OrderType.DELIVERY
-            ? payload.deliveryFee
+            ? payload.deliveryCharge
             : 0;
         const tip = (_d = payload.tip) !== null && _d !== void 0 ? _d : 0;
         let discount = 0;
@@ -484,7 +492,12 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         const TAX_RATE = settings === null || settings === void 0 ? void 0 : settings.taxRate;
         const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
         // Calculate grand total
-        const total = Number(subtotal - discount + deliveryFee + tax + tip);
+        console.log("discount = ", discount);
+        console.log("delivery fee =", deliveryFee);
+        console.log("tex =", tax);
+        console.log("tip =", tip);
+        const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
+        console.log("grand total = ", total);
         const orderNumber = generateOrderNumber();
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         let orderStatus = "PENDING";
@@ -499,8 +512,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             },
         ];
         // CARD PAYMENT
-        let paymentDoc;
-        let orderDoc;
+        // let paymentDoc: IPayment & Document;
+        // let orderDoc: IOrder & Document;
         const { paymentIntentId } = payload;
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD && paymentIntentId) {
             if (!paymentIntentId) {
@@ -563,6 +576,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
+            console.log(payload.otp);
             yield otp_service_1.OtpServices.verifyOtp(payload.customerEmail, payload.otp);
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
@@ -573,7 +587,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CASH,
                 },
             ], { session });
-            const paymentDoc = paymentDocs[0];
+            paymentDoc = paymentDocs[0];
             const orderDocs = yield order_model_1.Order.create([
                 Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
                     tax,
@@ -581,11 +595,17 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     discount,
                     total, status: orderStatus, statusHistory, payment: paymentDoc._id }),
             ], { session });
-            const orderDoc = orderDocs[0];
+            orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
         }
         yield session.commitTransaction();
         session.endSession();
+        const latestOrder = yield order_model_1.Order.findById(orderDoc === null || orderDoc === void 0 ? void 0 : orderDoc._id);
+        const latestPayment = yield payment_model_1.Payment.findById(paymentDoc === null || paymentDoc === void 0 ? void 0 : paymentDoc._id);
+        return {
+            order: latestOrder !== null && latestOrder !== void 0 ? latestOrder : orderDoc,
+            payment: latestPayment !== null && latestPayment !== void 0 ? latestPayment : paymentDoc,
+        };
     }
     catch (error) {
         yield session.abortTransaction();

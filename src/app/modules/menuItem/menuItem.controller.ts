@@ -72,6 +72,7 @@ export const updateMenuItem = async (
       ...req.body,
       imageUrl: req.file?.path,
     };
+    console.log(payload);
     const updated = await MenuItemService.updateMenuItem(
       req.params.id,
       payload

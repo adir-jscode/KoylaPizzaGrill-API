@@ -49,12 +49,12 @@ const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0
 exports.createPaymentIntent = createPaymentIntent;
 const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        console.log("body from frontend", req.body);
         const payload = req.body;
         if (!payload.paymentMethod) {
             throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment method is required (CARD or CASH)");
         }
         const result = yield (0, order_service_1.createOrder)(payload);
+        console.log("from controller", result);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.CREATED,

@@ -7,10 +7,10 @@ const AddonSchema = new mongoose_1.Schema({
     price: { type: Number, required: true },
 });
 const PrimaryOptionSchema = new mongoose_1.Schema({
-    name: { type: String, required: true },
+    name: { type: String },
     options: [
         {
-            name: { type: String, required: true },
+            name: { type: String },
             price: { type: Number, default: 0 },
         },
     ],
@@ -36,7 +36,7 @@ const MenuItemSchema = new mongoose_1.Schema({
     description: { type: String },
     imageUrl: { type: String },
     price: { type: Number, required: true },
-    primaryOption: { type: PrimaryOptionSchema },
+    primaryOption: { type: PrimaryOptionSchema, default: {} },
     secondaryOptions: { type: [SecondaryOptionSchema], default: [] },
     addons: { type: [AddonSchema], default: [] },
     tags: { type: [String], default: [] },

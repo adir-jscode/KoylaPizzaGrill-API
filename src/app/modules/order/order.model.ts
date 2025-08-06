@@ -73,7 +73,7 @@ const OrderSchema = new Schema<IOrder & Document>(
     deliveryAddress: { type: String },
     orderItems: { type: [OrderItemSchema], required: true },
     subtotal: { type: Number, required: true },
-    deliveryFee: { type: Number },
+    deliveryCharge: { type: Number },
     tax: { type: Number, required: true },
     tip: { type: Number },
     discount: { type: Number },

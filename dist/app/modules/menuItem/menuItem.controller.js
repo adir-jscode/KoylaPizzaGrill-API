@@ -67,6 +67,7 @@ const updateMenuItem = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     var _a;
     try {
         const payload = Object.assign(Object.assign({}, req.body), { imageUrl: (_a = req.file) === null || _a === void 0 ? void 0 : _a.path });
+        console.log(payload);
         const updated = yield menuItem_service_1.MenuItemService.updateMenuItem(req.params.id, payload);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,

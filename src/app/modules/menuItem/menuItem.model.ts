@@ -6,32 +6,41 @@ import {
   ISecondaryOption,
 } from "./menuItem.interface";
 
-const AddonSchema = new Schema<IAddon>({
-  name: { type: String, required: true },
-  price: { type: Number, required: true },
-});
+const AddonSchema = new Schema<IAddon>(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false, versionKey: false }
+);
 
-const PrimaryOptionSchema = new Schema<IPrimaryOption>({
-  name: { type: String, required: true },
-  options: [
-    {
-      name: { type: String, required: true },
-      price: { type: Number, default: 0 },
-    },
-  ],
-});
+const PrimaryOptionSchema = new Schema<IPrimaryOption>(
+  {
+    name: { type: String },
+    options: [
+      {
+        name: { type: String },
+        price: { type: Number, default: 0 },
+      },
+    ],
+  },
+  { _id: false, versionKey: false }
+);
 
-const SecondaryOptionSchema = new Schema<ISecondaryOption>({
-  name: { type: String, required: true },
-  minSelect: { type: Number, required: true },
-  maxSelect: { type: Number, required: true },
-  options: [
-    {
-      name: { type: String, required: true },
-      price: { type: Number, default: 0 },
-    },
-  ],
-});
+const SecondaryOptionSchema = new Schema<ISecondaryOption>(
+  {
+    name: { type: String, required: true },
+    minSelect: { type: Number, required: true },
+    maxSelect: { type: Number, required: true },
+    options: [
+      {
+        name: { type: String, required: true },
+        price: { type: Number, default: 0 },
+      },
+    ],
+  },
+  { _id: false, versionKey: false }
+);
 
 const MenuItemSchema = new Schema<IMenuItem>(
   {
@@ -44,7 +53,7 @@ const MenuItemSchema = new Schema<IMenuItem>(
     description: { type: String },
     imageUrl: { type: String },
     price: { type: Number, required: true },
-    primaryOption: { type: PrimaryOptionSchema },
+    primaryOption: { type: PrimaryOptionSchema, default: {} },
     secondaryOptions: { type: [SecondaryOptionSchema], default: [] },
     addons: { type: [AddonSchema], default: [] },
     tags: { type: [String], default: [] },

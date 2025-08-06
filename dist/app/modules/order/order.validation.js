@@ -48,6 +48,7 @@ exports.createOrderZodSchema = zod_1.z.object({
     orderType: orderTypeEnum,
     isScheduled: zod_1.z.boolean(),
     deliveryAddress: zod_1.z.string().optional(),
+    deliveryCharge: zod_1.z.number().optional(),
     orderItems: zod_1.z.array(orderItemSchema).min(1),
     tip: zod_1.z.number().nonnegative().optional(),
     discount: zod_1.z.number().nonnegative().optional(),

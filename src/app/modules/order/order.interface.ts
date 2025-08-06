@@ -43,7 +43,7 @@ export interface IOrder {
   deliveryAddress?: string;
   orderItems: IOrderItem[];
   subtotal: number;
-  deliveryFee?: number;
+  deliveryCharge?: number;
   tax: number;
   tip?: number;
   discount?: number;
