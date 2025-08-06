@@ -55,12 +55,14 @@ export const createOrderZodSchema = z.object({
   orderType: orderTypeEnum,
   isScheduled: z.boolean(),
   deliveryAddress: z.string().optional(),
+  deliveryCharge: z.number().optional(),
   orderItems: z.array(orderItemSchema).min(1),
   tip: z.number().nonnegative().optional(),
   discount: z.number().nonnegative().optional(),
   paymentMethod: paymentMethodEnum,
   couponCode: z.string().optional(),
   paymentIntentId: z.string().optional(),
+  otp: z.string().optional(),
 });
 
 // For update, all fields are optional but at least one must exist

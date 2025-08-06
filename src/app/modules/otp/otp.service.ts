@@ -26,17 +26,20 @@ const sendOtp = async (email: string, name: string) => {
 };
 const verifyOtp = async (email: string, otp: string) => {
   try {
+    console.log(email);
+    console.log(otp);
     const redisKey = `otp:${email}`;
     const savedOtp = await redisClient.get(redisKey);
+    console.log(savedOtp);
     if (!savedOtp) {
-      throw new AppError(401, "Invalid otp");
+      throw new AppError(400, "Invalid otp");
     }
-    if (savedOtp === otp) {
-      throw new AppError(401, "Invalid otp");
+    if (savedOtp !== otp) {
+      throw new AppError(400, "Invalid otp");
     }
     await redisClient.del(redisKey);
-    return true;
   } catch (error) {
+    console.log(error);
     throw new AppError(400, "Fail to verify OTP");
   }
 };

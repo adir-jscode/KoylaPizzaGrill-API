@@ -435,13 +435,21 @@ export const changeOrderStatus = async (
 };
 
 export const createOrder = async (
-  payload: IOrder & { paymentMethod: PAYMENT_METHOD; paymentIntentId?: string }
+  payload: IOrder & {
+    paymentMethod: PAYMENT_METHOD;
+    paymentIntentId?: string;
+    otp: string;
+  }
 ) => {
   const transactionId = getTransactionId();
   const session = await Order.startSession();
   await session.startTransaction();
 
   try {
+    console.log("from frontend payload = ", payload);
+    let orderDoc: (IOrder & Document) | undefined;
+    let paymentDoc: (IPayment & Document) | undefined;
+
     let subtotal = 0;
     let preparedItems: IOrderItem[] = [];
 
@@ -497,9 +505,14 @@ export const createOrder = async (
       }
 
       // Calculate total price for this order item (including quantity)
+      console.log(basePrice);
+      console.log(secondaryTotal);
+      console.log(addonsTotal);
       const totalPrice =
         (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
       subtotal += totalPrice;
+      console.log(totalPrice);
+      console.log("subtotal", subtotal);
 
       // Push prepared item to array
       preparedItems.push({
@@ -515,9 +528,10 @@ export const createOrder = async (
 
     // Calculate delivery fee
     const resSettings = await RestaurantSettings.findOne();
+    console.log("payload delivery charge = ", payload.deliveryCharge);
     const deliveryFee =
       payload.orderType === OrderType.DELIVERY
-        ? (payload.deliveryFee as number)
+        ? (payload.deliveryCharge as number)
         : 0;
 
     const tip = payload.tip ?? 0;
@@ -554,13 +568,15 @@ export const createOrder = async (
     const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
 
     // Calculate grand total
-    const total = Number(subtotal - discount + deliveryFee + tax + tip);
-    console.log(subtotal);
-    console.log(discount);
-    console.log(deliveryFee);
-    console.log(tax);
-    console.log(tip);
-    console.log(total);
+    console.log("discount = ", discount);
+    console.log("delivery fee =", deliveryFee);
+    console.log("tex =", tax);
+    console.log("tip =", tip);
+    const total = Number(
+      (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
+    );
+
+    console.log("grand total = ", total);
     const orderNumber = generateOrderNumber();
 
     let paymentStatus = PAYMENT_STATUS.UNPAID;
@@ -578,8 +594,8 @@ export const createOrder = async (
     ];
 
     // CARD PAYMENT
-    let paymentDoc: IPayment & Document;
-    let orderDoc: IOrder & Document;
+    // let paymentDoc: IPayment & Document;
+    // let orderDoc: IOrder & Document;
     const { paymentIntentId } = payload;
     if (payload.paymentMethod === PAYMENT_METHOD.CARD && paymentIntentId) {
       if (!paymentIntentId) {
@@ -674,14 +690,11 @@ export const createOrder = async (
 
     // CASH PAYMENT FLOW
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
-      const verifyOtp = await OtpServices.verifyOtp(
+      console.log(payload.otp);
+      await OtpServices.verifyOtp(
         payload.customerEmail as string,
         payload.otp as string
       );
-
-      if (!verifyOtp) {
-        throw new AppError(httpStatus.BAD_REQUEST, "Please provide valid otp");
-      }
 
       const paymentDocs = await Payment.create(
         [
@@ -696,8 +709,7 @@ export const createOrder = async (
         { session }
       );
 
-      const paymentDoc = paymentDocs[0];
-
+      paymentDoc = paymentDocs[0];
       const orderDocs = await Order.create(
         [
           {
@@ -717,7 +729,7 @@ export const createOrder = async (
         ],
         { session }
       );
-      const orderDoc = orderDocs[0];
+      orderDoc = orderDocs[0];
 
       await Payment.findByIdAndUpdate(
         paymentDoc._id,
@@ -728,6 +740,13 @@ export const createOrder = async (
 
     await session.commitTransaction();
     session.endSession();
+    const latestOrder = await Order.findById(orderDoc?._id);
+    const latestPayment = await Payment.findById(paymentDoc?._id);
+
+    return {
+      order: latestOrder ?? orderDoc,
+      payment: latestPayment ?? paymentDoc,
+    };
   } catch (error) {
     await session.abortTransaction();
     session.endSession();

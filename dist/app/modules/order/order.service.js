@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOrder = exports.changeOrderStatus = exports.filteredOrders = exports.getAllOrder = exports.orderHistoryById = exports.updatePaymentOrderStatus = void 0;
+exports.createOrder = exports.changeOrderStatus = exports.filteredOrders = exports.getAllOrder = exports.orderHistoryByOrderNumber = exports.updatePaymentOrderStatus = void 0;
 const stripe_1 = require("../../config/stripe");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const coupons_interface_1 = require("../coupons/coupons.interface");
@@ -25,12 +25,19 @@ const order_model_1 = require("./order.model");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const date_fns_1 = require("date-fns");
 const restaurantSettings_model_1 = require("../restaurantSettings/restaurantSettings.model");
+const otp_service_1 = require("../otp/otp.service");
 const sendMail_1 = require("../../utils/sendMail");
+const crypto_1 = __importDefault(require("crypto"));
+const coupons_service_1 = require("../coupons/coupons.service");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
-const generateOrderNumber = () => {
-    return `KPG-${Date.now()}`;
+// const generateOrderNumber = () => {
+//   return `KPG-${Date.now()}`;
+// };
+const generateOrderNumber = (length = 6) => {
+    const randomNum = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length);
+    return `KPG-${randomNum}`;
 };
 // export const createOrder = async (
 //   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
@@ -303,10 +310,10 @@ const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, 
     return payment;
 });
 exports.updatePaymentOrderStatus = updatePaymentOrderStatus;
-const orderHistoryById = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
-    const order = yield order_model_1.Order.findById(orderId);
+const orderHistoryByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.Order.findOne({ orderNumber });
     if (!order) {
-        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order number not found");
     }
     const sortedStatusHistory = order.statusHistory
         .slice()
@@ -316,7 +323,7 @@ const orderHistoryById = (orderId) => __awaiter(void 0, void 0, void 0, function
         statusHistory: sortedStatusHistory,
     };
 });
-exports.orderHistoryById = orderHistoryById;
+exports.orderHistoryByOrderNumber = orderHistoryByOrderNumber;
 const getAllOrder = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const orders = yield order_model_1.Order.find(query);
     return orders;
@@ -397,6 +404,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     const session = yield order_model_1.Order.startSession();
     yield session.startTransaction();
     try {
+        console.log("from frontend payload = ", payload);
         let subtotal = 0;
         let preparedItems = [];
         // Calculate item prices and prepare items for order
@@ -457,7 +465,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 validTo: { $gte: new Date() },
                 $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
             });
-            if (!coupon)
+            if (!coupon || coupon.usedCount === coupon.usageLimit)
                 throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "Invalid coupon code");
             if (coupon && subtotal >= coupon.minOrder) {
                 if (coupon.type === coupons_interface_1.Type.PERCENTAGE) {
@@ -469,6 +477,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     discount = coupon.value;
                 }
             }
+            yield coupons_service_1.CouponServices.updateCouponCount(coupon.code);
         }
         discount = Math.max(discount, 0);
         const settings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
@@ -476,12 +485,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
         // Calculate grand total
         const total = Number(subtotal - discount + deliveryFee + tax + tip);
-        console.log(subtotal);
-        console.log(discount);
-        console.log(deliveryFee);
-        console.log(tax);
-        console.log(tip);
-        console.log(total);
         const orderNumber = generateOrderNumber();
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         let orderStatus = "PENDING";
@@ -491,7 +494,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         // --- Order status history ---
         const statusHistory = [
             {
-                status: "PENDING",
+                status: "CONFIRMED",
                 updatedAt: new Date().toISOString(),
             },
         ];
@@ -560,10 +563,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
-            // await OtpServices.sendOtp(
-            //   payload.customerEmail as string,
-            //   payload.customerName
-            // );
+            yield otp_service_1.OtpServices.verifyOtp(payload.customerEmail, payload.otp);
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
                     order: undefined,

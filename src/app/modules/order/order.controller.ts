@@ -63,12 +63,13 @@ export const createOrderController = async (
     }
 
     const result = await createOrder(payload);
+    console.log("from controller", result);
 
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.CREATED,
       message: "Order created successfully",
-      data: null,
+      data: result,
     });
   } catch (error) {
     next(error);

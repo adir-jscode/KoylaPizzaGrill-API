@@ -24,6 +24,9 @@ const getAllCoupons = () => __awaiter(void 0, void 0, void 0, function* () {
     const coupons = yield coupons_model_1.Coupon.find({});
     return coupons;
 });
+const updateCouponCount = (code) => __awaiter(void 0, void 0, void 0, function* () {
+    yield coupons_model_1.Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
+});
 const updateCouponStatus = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const isCouponExist = yield coupons_model_1.Coupon.findById(id);
     if (!isCouponExist) {
@@ -64,4 +67,5 @@ exports.CouponServices = {
     updateCouponStatus,
     updateCoupon,
     getAllCoupons,
+    updateCouponCount,
 };

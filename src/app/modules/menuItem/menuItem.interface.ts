@@ -23,7 +23,7 @@ export interface IMenuItem {
   description?: string;
   imageUrl?: string;
   price: number;
-  primaryOption: IPrimaryOption;
+  primaryOption?: IPrimaryOption;
   secondaryOptions?: ISecondaryOption[];
   addons?: IAddon[];
   tags?: string[];

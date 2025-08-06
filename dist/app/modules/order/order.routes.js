@@ -47,7 +47,7 @@ const router = (0, express_1.Router)();
 router.post("/", (0, validateRequest_1.validateRequest)(order_validation_1.createOrderZodSchema), orderController.createOrderController);
 router.get("/", checkAuth_1.checkAuth, orderController.getAllOrders);
 router.post("/stripe/webhook", express_2.default.raw({ type: "application/json" }), orderController.stripeWebhookHandler);
-router.get("/history/:id", checkAuth_1.checkAuth, orderController.getOrderHistory);
+router.get("/history/:orderNumber", checkAuth_1.checkAuth, orderController.getOrderHistory);
 router.put("/:id", checkAuth_1.checkAuth, orderController.toggleOrderStatus);
 router.get("/filter", checkAuth_1.checkAuth, orderController.getFilteredOrders);
 router.post("/payment-intent", orderController.createPaymentIntent);

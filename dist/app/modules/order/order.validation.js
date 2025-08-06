@@ -54,6 +54,7 @@ exports.createOrderZodSchema = zod_1.z.object({
     paymentMethod: paymentMethodEnum,
     couponCode: zod_1.z.string().optional(),
     paymentIntentId: zod_1.z.string().optional(),
+    otp: zod_1.z.string().optional(),
 });
 // For update, all fields are optional but at least one must exist
 exports.updateOrderZodSchema = exports.createOrderZodSchema

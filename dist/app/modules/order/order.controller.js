@@ -49,6 +49,7 @@ const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0
 exports.createPaymentIntent = createPaymentIntent;
 const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        console.log("body from frontend", req.body);
         const payload = req.body;
         if (!payload.paymentMethod) {
             throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment method is required (CARD or CASH)");
@@ -58,7 +59,7 @@ const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void
             success: true,
             statusCode: http_status_codes_1.default.CREATED,
             message: "Order created successfully",
-            data: null,
+            data: result,
         });
     }
     catch (error) {
@@ -144,8 +145,8 @@ const stripeWebhookHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
 exports.stripeWebhookHandler = stripeWebhookHandler;
 const getOrderHistory = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const orderId = req.params.id;
-        const data = yield (0, order_service_1.orderHistoryById)(orderId);
+        const orderNumber = req.params.orderNumber;
+        const data = yield (0, order_service_1.orderHistoryByOrderNumber)(orderNumber);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,

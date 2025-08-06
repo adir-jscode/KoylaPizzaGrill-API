@@ -17,7 +17,6 @@ const crypto_1 = __importDefault(require("crypto"));
 const radis_config_1 = require("../../config/radis.config");
 const sendMail_1 = require("../../utils/sendMail");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
-const order_model_1 = require("../order/order.model");
 const OTP_EXPIRATION = 2 * 60;
 const generateOtp = (length = 6) => {
     const otp = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length).toString();
@@ -41,15 +40,15 @@ const verifyOtp = (email, otp) => __awaiter(void 0, void 0, void 0, function* ()
         const redisKey = `otp:${email}`;
         const savedOtp = yield radis_config_1.redisClient.get(redisKey);
         if (!savedOtp) {
-            throw new AppError_1.default(401, "Invalid otp");
+            throw new AppError_1.default(400, "Invalid otp");
         }
-        if (savedOtp === otp) {
-            throw new AppError_1.default(401, "Invalid otp");
+        if (savedOtp !== otp) {
+            throw new AppError_1.default(400, "Invalid otp");
         }
-        yield order_model_1.Order.updateOne({ customerEmail: email }, { status: "CONFIRMED" }, { runValidators: true });
         yield radis_config_1.redisClient.del(redisKey);
     }
     catch (error) {
+        console.log(error);
         throw new AppError_1.default(400, "Fail to verify OTP");
     }
 });
