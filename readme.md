@@ -12,11 +12,26 @@ This is the backend API for Koyla Pizza Grill, a restaurant management and order
 src/
 └── app/
 ├── config/
-│ ├── db.ts
-│ └── cloudinary.ts
+│ ├── cloudinary.config.ts
+│ ├── env.ts
+│ ├── multer.config.ts
+│ ├── redis.config.ts
+│ └── stripe.config.ts
+├── errorHelpers/
+│ ├── AppError.ts
+├── hekpers/
+│ ├── handlerCastError.ts
+│ ├── handleDuplicateError.ts
+│ └── handleValidationError.ts
+│ └── handleZodError.ts
+├── interfaces/
+│ ├── error.types.ts
+│ ├── index.d.ts
 ├── middlewares/
-│ ├── auth.ts
-│ ├── errorHandler.ts
+│ ├── checkAuth.ts
+│ ├── globalErrorHandler.ts
+│ └── notFound.ts
+│ └── upload.ts
 │ └── validateRequest.ts
 ├── modules/
 │ ├── admin/
@@ -66,9 +81,9 @@ src/
 │ │ └── scheduledClosing.routes.ts
 │ └── otp/
 │ ├── otp.controller.ts
-│ ├── otp.interface.ts
+│ ├── otp.route.ts
 │ ├── otp.model.ts
-│ └── otp.routes.ts
+│ └── otp.service.ts
 ├── routes/
 │ └── index.ts
 ├── utils/
