@@ -5,7 +5,7 @@ const mongoose_1 = require("mongoose");
 const AddonSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     price: { type: Number, required: true },
-});
+}, { _id: false, versionKey: false });
 const PrimaryOptionSchema = new mongoose_1.Schema({
     name: { type: String },
     options: [
@@ -14,7 +14,7 @@ const PrimaryOptionSchema = new mongoose_1.Schema({
             price: { type: Number, default: 0 },
         },
     ],
-});
+}, { _id: false, versionKey: false });
 const SecondaryOptionSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     minSelect: { type: Number, required: true },
@@ -25,7 +25,7 @@ const SecondaryOptionSchema = new mongoose_1.Schema({
             price: { type: Number, default: 0 },
         },
     ],
-});
+}, { _id: false, versionKey: false });
 const MenuItemSchema = new mongoose_1.Schema({
     categoryId: {
         type: mongoose_1.Schema.Types.ObjectId,
