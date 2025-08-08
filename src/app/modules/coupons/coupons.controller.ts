@@ -93,10 +93,27 @@ const UpdateCoupon = async (
     next(err);
   }
 };
+
+const applyCoupon = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { code } = req.body;
+    const coupon = await CouponServices.applyCoupon(code);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Coupon Applied Successfully",
+      data: coupon,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};
+
 export const CouponControllers = {
   createCoupon,
   deleteCoupon,
   UpdateCouponStatus,
   UpdateCoupon,
   getAllCoupons,
+  applyCoupon,
 };

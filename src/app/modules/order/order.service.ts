@@ -25,15 +25,12 @@ import { CouponServices } from "../coupons/coupons.service";
 const getTransactionId = () => {
   return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
-// const generateOrderNumber = () => {
-//   return `KPG-${Date.now()}`;
-// };
 
 const generateOrderNumber = (length = 6) => {
   const randomNum = crypto.randomInt(10 ** (length - 1), 10 ** length);
   return `KPG-${randomNum}`;
 };
-// export const createOrder = async (
+
 //   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
 // ) => {
 //   const transactionId = getTransactionId();
@@ -317,7 +314,7 @@ const generateOrderNumber = (length = 6) => {
 //   }
 // };
 
-export const updatePaymentOrderStatus = async (orderId: string) => {
+const updatePaymentOrderStatus = async (orderId: string) => {
   const order = await Order.findById(orderId);
   if (!order) {
     throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
@@ -337,7 +334,7 @@ export const updatePaymentOrderStatus = async (orderId: string) => {
   return payment;
 };
 
-export const orderHistoryByOrderNumber = async (orderNumber: string) => {
+const orderHistoryByOrderNumber = async (orderNumber: string) => {
   const order = await Order.findOne({ orderNumber });
   if (!order) {
     throw new AppError(httpStatus.BAD_REQUEST, "Order number not found");
@@ -354,11 +351,11 @@ export const orderHistoryByOrderNumber = async (orderNumber: string) => {
   };
 };
 
-export const getAllOrder = async (query: Record<string, string>) => {
+const getAllOrder = async (query: Record<string, string>) => {
   const orders = await Order.find(query);
   return orders;
 };
-export const filteredOrders = async (query: Record<string, string>) => {
+const filteredOrders = async (query: Record<string, string>) => {
   const filter: FilterQuery<typeof Order> = {};
 
   // Parse date filters if provided
@@ -400,11 +397,7 @@ export const filteredOrders = async (query: Record<string, string>) => {
 
   return orders;
 };
-
-export const changeOrderStatus = async (
-  orderId: string,
-  payload: IStatusHistory
-) => {
+const changeOrderStatus = async (orderId: string, payload: IStatusHistory) => {
   const order = await Order.findById(orderId);
   if (!order) {
     throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
@@ -434,7 +427,7 @@ export const changeOrderStatus = async (
   return { order: order.statusHistory };
 };
 
-export const createOrder = async (
+const createOrder = async (
   payload: IOrder & {
     paymentMethod: PAYMENT_METHOD;
     paymentIntentId?: string;
@@ -752,4 +745,18 @@ export const createOrder = async (
     session.endSession();
     throw error;
   }
+};
+const trackByOrderNumber = async (orderNumber: string) => {
+  const order = await Order.findOne({ orderNumber }).populate("payment");
+  return order;
+};
+
+export const OrderServices = {
+  createOrder,
+  trackByOrderNumber,
+  filteredOrders,
+  getAllOrder,
+  changeOrderStatus,
+  updatePaymentOrderStatus,
+  orderHistoryByOrderNumber,
 };

@@ -30,5 +30,6 @@ router.put(
   validateRequest(updateCouponZodSchema),
   CouponControllers.UpdateCoupon
 );
+router.post("/apply-coupon", CouponControllers.applyCoupon);
 
 export const CouponRoutes = router;

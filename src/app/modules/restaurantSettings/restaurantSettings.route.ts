@@ -1,22 +1,22 @@
 import { Router } from "express";
-import * as ctrl from "./restaurantSettings.controller";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { restaurantSettingsZodSchema } from "./restaurantSettings.validation";
 import { checkAuth } from "../../middlewares/checkAuth";
+import { RestaurantSettingsControllers } from "./restaurantSettings.controller";
 
 const router = Router();
-router.get("/", ctrl.getSettings);
+router.get("/", RestaurantSettingsControllers.getSettings);
 router.post(
   "/add-settings",
   checkAuth,
   validateRequest(restaurantSettingsZodSchema),
-  ctrl.addSettings
+  RestaurantSettingsControllers.addSettings
 );
 router.put(
   "/",
   checkAuth,
   validateRequest(restaurantSettingsZodSchema),
-  ctrl.updateSettings
+  RestaurantSettingsControllers.updateSettings
 );
 
 export const RestaurantSettingsRoutes = router;

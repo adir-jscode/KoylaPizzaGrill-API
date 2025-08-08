@@ -1,12 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import {
-  createOrder,
-  updatePaymentOrderStatus,
-  getAllOrder,
-  changeOrderStatus,
-  filteredOrders,
-  orderHistoryByOrderNumber,
-} from "./order.service";
+
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
 import AppError from "../../errorHelpers/AppError";
@@ -15,9 +8,10 @@ import { Payment } from "../payment/payment.model";
 import Stripe from "stripe";
 import { Order } from "./order.model";
 import { stripe } from "../../config/stripe";
+import { OrderServices } from "./order.service";
 
 // POST /orders/payment-intent
-export const createPaymentIntent = async (
+const createPaymentIntent = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -47,11 +41,7 @@ export const createPaymentIntent = async (
   }
 };
 
-export const createOrderController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = req.body;
 
@@ -62,7 +52,7 @@ export const createOrderController = async (
       );
     }
 
-    const result = await createOrder(payload);
+    const result = await OrderServices.createOrder(payload);
     console.log("from controller", result);
 
     sendResponse(res, {
@@ -76,13 +66,15 @@ export const createOrderController = async (
   }
 };
 
-export const getAllOrders = async (
+const getAllOrders = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const orders = await getAllOrder(req.query as Record<string, string>);
+    const orders = await OrderServices.getAllOrder(
+      req.query as Record<string, string>
+    );
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -93,13 +85,15 @@ export const getAllOrders = async (
     next(error);
   }
 };
-export const getFilteredOrders = async (
+const getFilteredOrders = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const orders = await filteredOrders(req.query as Record<string, string>);
+    const orders = await OrderServices.filteredOrders(
+      req.query as Record<string, string>
+    );
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -110,14 +104,15 @@ export const getFilteredOrders = async (
     next(err);
   }
 };
-
-export const changePaymentOrderStatus = async (
+const changePaymentOrderStatus = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const paymentInfo = await updatePaymentOrderStatus(req.params.id);
+    const paymentInfo = await OrderServices.updatePaymentOrderStatus(
+      req.params.id
+    );
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -129,48 +124,14 @@ export const changePaymentOrderStatus = async (
   }
 };
 
-export const stripeWebhookHandler = async (req: Request, res: Response) => {
-  const sig = req.headers["stripe-signature"] as string;
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET as string
-    );
-  } catch (err: any) {
-    console.error("Stripe webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const payment = await Payment.findOne({ transactionId: paymentIntent.id });
-    if (payment) {
-      payment.status = PAYMENT_STATUS.PAID;
-      await payment.save();
-      // Also update order status to CONFIRMED, push to statusHistory
-      const order = await Order.findById(payment.order);
-      if (order) {
-        order.status = "CONFIRMED";
-        order.statusHistory.push({
-          status: "CONFIRMED",
-          updatedAt: new Date().toISOString(),
-        });
-        await order.save();
-      }
-    }
-  }
-  res.status(200).json({ received: true });
-};
-
-export const getOrderHistory = async (
+const getOrderHistory = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const orderNumber = req.params.orderNumber;
-    const data = await orderHistoryByOrderNumber(orderNumber);
+    const data = await OrderServices.orderHistoryByOrderNumber(orderNumber);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -182,14 +143,14 @@ export const getOrderHistory = async (
   }
 };
 
-export const toggleOrderStatus = async (
+const toggleOrderStatus = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const id = req.params.id;
-    const order = await changeOrderStatus(id, req.body);
+    const order = await OrderServices.changeOrderStatus(id, req.body);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
@@ -199,4 +160,34 @@ export const toggleOrderStatus = async (
   } catch (error) {
     next(error);
   }
+};
+
+const trackByOrderNumber = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { orderNumber } = req.body;
+    const orderInfo = await OrderServices.trackByOrderNumber(orderNumber);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Data retrived successfully",
+      data: orderInfo,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const OrderControllers = {
+  createPaymentIntent,
+  createOrder,
+  getAllOrders,
+  getFilteredOrders,
+  changePaymentOrderStatus,
+  getOrderHistory,
+  toggleOrderStatus,
+  trackByOrderNumber,
 };

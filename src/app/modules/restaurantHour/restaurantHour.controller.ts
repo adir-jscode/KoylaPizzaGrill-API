@@ -77,3 +77,10 @@ export const updateHourByDay = async (
     next(err);
   }
 };
+
+export const RestaurantHourControllers = {
+  createRestaurantHour,
+  getAllHours,
+  getHourByDay,
+  updateHourByDay,
+};

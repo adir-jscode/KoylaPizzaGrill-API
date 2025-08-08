@@ -1,26 +1,26 @@
 import { Router } from "express";
-import * as orderController from "./order.controller";
+
 import { validateRequest } from "../../middlewares/validateRequest";
 import { createOrderZodSchema } from "./order.validation";
 import { checkAuth } from "../../middlewares/checkAuth";
 import express from "express";
+import { OrderControllers } from "./order.controller";
 
 const router = Router();
 
 router.post(
   "/",
   validateRequest(createOrderZodSchema),
-  orderController.createOrderController
+  OrderControllers.createOrder
 );
-router.get("/", checkAuth, orderController.getAllOrders);
-router.post(
-  "/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  orderController.stripeWebhookHandler
+router.get("/", checkAuth, OrderControllers.getAllOrders);
+router.get(
+  "/history/:orderNumber",
+  checkAuth,
+  OrderControllers.getOrderHistory
 );
-
-router.get("/history/:orderNumber", checkAuth, orderController.getOrderHistory);
-router.put("/:id", checkAuth, orderController.toggleOrderStatus);
-router.get("/filter", checkAuth, orderController.getFilteredOrders);
-router.post("/payment-intent", orderController.createPaymentIntent);
+router.put("/:id", checkAuth, OrderControllers.toggleOrderStatus);
+router.get("/filter", checkAuth, OrderControllers.getFilteredOrders);
+router.post("/payment-intent", OrderControllers.createPaymentIntent);
+router.post("/track", OrderControllers.trackByOrderNumber);
 export const OrderRoutes = router;

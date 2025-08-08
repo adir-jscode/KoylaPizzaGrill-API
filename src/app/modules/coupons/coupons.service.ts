@@ -13,6 +13,27 @@ const getAllCoupons = async () => {
   return coupons;
 };
 
+const applyCoupon = async (code: string) => {
+  const coupon = await Coupon.findOne({ code });
+  if (!coupon) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid coupon code");
+  }
+  if (coupon.usedCount >= coupon?.usageLimit) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Coupon has reached its usage limit"
+    );
+  }
+  if (coupon.validFrom > new Date() || coupon.validTo < new Date()) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Coupon is not valid");
+  }
+
+  if (!coupon.active) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Coupon is not active");
+  }
+  return coupon;
+};
+
 const updateCouponCount = async (code: string) => {
   await Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
 };
@@ -60,4 +81,5 @@ export const CouponServices = {
   updateCoupon,
   getAllCoupons,
   updateCouponCount,
+  applyCoupon,
 };

@@ -12,7 +12,7 @@ export interface ICoupon {
   maxDiscount?: number;
   validFrom: Date;
   validTo: Date;
-  usageLimit?: number;
+  usageLimit: number;
   usedCount: number;
   active: boolean;
 }

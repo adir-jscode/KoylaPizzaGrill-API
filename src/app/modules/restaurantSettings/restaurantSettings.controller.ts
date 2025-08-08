@@ -57,3 +57,9 @@ export const updateSettings = async (
     next(err);
   }
 };
+
+export const RestaurantSettingsControllers = {
+  getSettings,
+  addSettings,
+  updateSettings,
+};
