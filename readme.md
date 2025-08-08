@@ -8,6 +8,7 @@ This is the backend API for Koyla Pizza Grill, a restaurant management and order
 
 ## 📁 Directory Structure
 
+```plaintext
 src/
 └── app/
 ├── config/
@@ -77,6 +78,9 @@ src/
 ├── app.ts
 └── server.ts
 .env
+```
+
+---
 
 ## Features
 
