@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOrder = exports.changeOrderStatus = exports.filteredOrders = exports.getAllOrder = exports.orderHistoryByOrderNumber = exports.updatePaymentOrderStatus = void 0;
+exports.OrderServices = void 0;
 const stripe_1 = require("../../config/stripe");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const coupons_interface_1 = require("../coupons/coupons.interface");
@@ -32,14 +32,10 @@ const coupons_service_1 = require("../coupons/coupons.service");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
-// const generateOrderNumber = () => {
-//   return `KPG-${Date.now()}`;
-// };
 const generateOrderNumber = (length = 6) => {
     const randomNum = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length);
     return `KPG-${randomNum}`;
 };
-// export const createOrder = async (
 //   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
 // ) => {
 //   const transactionId = getTransactionId();
@@ -309,7 +305,6 @@ const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, 
     payment.save();
     return payment;
 });
-exports.updatePaymentOrderStatus = updatePaymentOrderStatus;
 const orderHistoryByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const order = yield order_model_1.Order.findOne({ orderNumber });
     if (!order) {
@@ -323,12 +318,10 @@ const orderHistoryByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, voi
         statusHistory: sortedStatusHistory,
     };
 });
-exports.orderHistoryByOrderNumber = orderHistoryByOrderNumber;
 const getAllOrder = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const orders = yield order_model_1.Order.find(query);
     return orders;
 });
-exports.getAllOrder = getAllOrder;
 const filteredOrders = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const filter = {};
     // Parse date filters if provided
@@ -368,7 +361,6 @@ const filteredOrders = (query) => __awaiter(void 0, void 0, void 0, function* ()
     const orders = yield order_model_1.Order.find(filter).sort({ createdAt: -1 });
     return orders;
 });
-exports.filteredOrders = filteredOrders;
 const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const order = yield order_model_1.Order.findById(orderId);
     if (!order) {
@@ -397,7 +389,6 @@ const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0
     order.save();
     return { order: order.statusHistory };
 });
-exports.changeOrderStatus = changeOrderStatus;
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e, _f;
     const transactionId = getTransactionId();
@@ -613,4 +604,16 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         throw error;
     }
 });
-exports.createOrder = createOrder;
+const trackByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.Order.findOne({ orderNumber }).populate("payment");
+    return order;
+});
+exports.OrderServices = {
+    createOrder,
+    trackByOrderNumber,
+    filteredOrders,
+    getAllOrder,
+    changeOrderStatus,
+    updatePaymentOrderStatus,
+    orderHistoryByOrderNumber,
+};

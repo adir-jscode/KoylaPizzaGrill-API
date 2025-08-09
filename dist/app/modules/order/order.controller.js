@@ -12,15 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toggleOrderStatus = exports.getOrderHistory = exports.stripeWebhookHandler = exports.changePaymentOrderStatus = exports.getFilteredOrders = exports.getAllOrders = exports.createOrderController = exports.createPaymentIntent = void 0;
-const order_service_1 = require("./order.service");
+exports.OrderControllers = void 0;
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const sendResponse_1 = require("../../utils/sendResponse");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
-const payment_interface_1 = require("../payment/payment.interface");
-const payment_model_1 = require("../payment/payment.model");
-const order_model_1 = require("./order.model");
 const stripe_1 = require("../../config/stripe");
+const order_service_1 = require("./order.service");
 // POST /orders/payment-intent
 const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -46,14 +43,13 @@ const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0
         next(err);
     }
 });
-exports.createPaymentIntent = createPaymentIntent;
-const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const createOrder = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const payload = req.body;
         if (!payload.paymentMethod) {
             throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment method is required (CARD or CASH)");
         }
-        const result = yield (0, order_service_1.createOrder)(payload);
+        const result = yield order_service_1.OrderServices.createOrder(payload);
         console.log("from controller", result);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
@@ -66,10 +62,9 @@ const createOrderController = (req, res, next) => __awaiter(void 0, void 0, void
         next(error);
     }
 });
-exports.createOrderController = createOrderController;
 const getAllOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const orders = yield (0, order_service_1.getAllOrder)(req.query);
+        const orders = yield order_service_1.OrderServices.getAllOrder(req.query);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -81,10 +76,9 @@ const getAllOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
         next(error);
     }
 });
-exports.getAllOrders = getAllOrders;
 const getFilteredOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const orders = yield (0, order_service_1.filteredOrders)(req.query);
+        const orders = yield order_service_1.OrderServices.filteredOrders(req.query);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -96,10 +90,9 @@ const getFilteredOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         next(err);
     }
 });
-exports.getFilteredOrders = getFilteredOrders;
 const changePaymentOrderStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const paymentInfo = yield (0, order_service_1.updatePaymentOrderStatus)(req.params.id);
+        const paymentInfo = yield order_service_1.OrderServices.updatePaymentOrderStatus(req.params.id);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -111,42 +104,10 @@ const changePaymentOrderStatus = (req, res, next) => __awaiter(void 0, void 0, v
         next(error);
     }
 });
-exports.changePaymentOrderStatus = changePaymentOrderStatus;
-const stripeWebhookHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const sig = req.headers["stripe-signature"];
-    let event;
-    try {
-        event = stripe_1.stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    }
-    catch (err) {
-        console.error("Stripe webhook signature verification failed:", err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-    if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object;
-        const payment = yield payment_model_1.Payment.findOne({ transactionId: paymentIntent.id });
-        if (payment) {
-            payment.status = payment_interface_1.PAYMENT_STATUS.PAID;
-            yield payment.save();
-            // Also update order status to CONFIRMED, push to statusHistory
-            const order = yield order_model_1.Order.findById(payment.order);
-            if (order) {
-                order.status = "CONFIRMED";
-                order.statusHistory.push({
-                    status: "CONFIRMED",
-                    updatedAt: new Date().toISOString(),
-                });
-                yield order.save();
-            }
-        }
-    }
-    res.status(200).json({ received: true });
-});
-exports.stripeWebhookHandler = stripeWebhookHandler;
 const getOrderHistory = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const orderNumber = req.params.orderNumber;
-        const data = yield (0, order_service_1.orderHistoryByOrderNumber)(orderNumber);
+        const data = yield order_service_1.OrderServices.orderHistoryByOrderNumber(orderNumber);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -158,11 +119,10 @@ const getOrderHistory = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         next(error);
     }
 });
-exports.getOrderHistory = getOrderHistory;
 const toggleOrderStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const id = req.params.id;
-        const order = yield (0, order_service_1.changeOrderStatus)(id, req.body);
+        const order = yield order_service_1.OrderServices.changeOrderStatus(id, req.body);
         (0, sendResponse_1.sendResponse)(res, {
             success: true,
             statusCode: http_status_codes_1.default.OK,
@@ -174,4 +134,28 @@ const toggleOrderStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         next(error);
     }
 });
-exports.toggleOrderStatus = toggleOrderStatus;
+const trackByOrderNumber = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { orderNumber } = req.body;
+        const orderInfo = yield order_service_1.OrderServices.trackByOrderNumber(orderNumber);
+        (0, sendResponse_1.sendResponse)(res, {
+            statusCode: http_status_codes_1.default.OK,
+            success: true,
+            message: "Data retrived successfully",
+            data: orderInfo,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.OrderControllers = {
+    createPaymentIntent,
+    createOrder,
+    getAllOrders,
+    getFilteredOrders,
+    changePaymentOrderStatus,
+    getOrderHistory,
+    toggleOrderStatus,
+    trackByOrderNumber,
+};

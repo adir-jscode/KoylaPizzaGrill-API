@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateHourByDay = exports.getHourByDay = exports.getAllHours = exports.createRestaurantHour = void 0;
+exports.RestaurantHourControllers = exports.updateHourByDay = exports.getHourByDay = exports.getAllHours = exports.createRestaurantHour = void 0;
 const restaurantHour_service_1 = require("./restaurantHour.service");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const sendResponse_1 = require("../../utils/sendResponse");
@@ -76,3 +76,9 @@ const updateHourByDay = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.updateHourByDay = updateHourByDay;
+exports.RestaurantHourControllers = {
+    createRestaurantHour: exports.createRestaurantHour,
+    getAllHours: exports.getAllHours,
+    getHourByDay: exports.getHourByDay,
+    updateHourByDay: exports.updateHourByDay,
+};

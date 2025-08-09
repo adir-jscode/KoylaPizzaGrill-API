@@ -12,4 +12,5 @@ router.post("/add-coupon", checkAuth_1.checkAuth, (0, validateRequest_1.validate
 router.delete("/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.deleteCoupon);
 router.patch("/update-status/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.UpdateCouponStatus);
 router.put("/:id", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(coupons_validation_1.updateCouponZodSchema), coupons_controller_1.CouponControllers.UpdateCoupon);
+router.post("/apply-coupon", coupons_controller_1.CouponControllers.applyCoupon);
 exports.CouponRoutes = router;

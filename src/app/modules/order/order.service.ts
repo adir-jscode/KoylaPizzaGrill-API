@@ -393,7 +393,9 @@ const filteredOrders = async (query: Record<string, string>) => {
   }
 
   // Fetch and sort descending by creation
-  const orders = await Order.find(filter).sort({ createdAt: -1 });
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1 })
+    .populate("payment");
 
   return orders;
 };
@@ -520,7 +522,6 @@ const createOrder = async (
     }
 
     // Calculate delivery fee
-    const resSettings = await RestaurantSettings.findOne();
     console.log("payload delivery charge = ", payload.deliveryCharge);
     const deliveryFee =
       payload.orderType === OrderType.DELIVERY
@@ -747,7 +748,7 @@ const createOrder = async (
   }
 };
 const trackByOrderNumber = async (orderNumber: string) => {
-  const order = await Order.findOne({ orderNumber }).populate("payment");
+  const order = await Order.findOne({ orderNumber });
   return order;
 };
 

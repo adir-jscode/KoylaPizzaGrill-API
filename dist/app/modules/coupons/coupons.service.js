@@ -24,6 +24,22 @@ const getAllCoupons = () => __awaiter(void 0, void 0, void 0, function* () {
     const coupons = yield coupons_model_1.Coupon.find({});
     return coupons;
 });
+const applyCoupon = (code) => __awaiter(void 0, void 0, void 0, function* () {
+    const coupon = yield coupons_model_1.Coupon.findOne({ code });
+    if (!coupon) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Invalid coupon code");
+    }
+    if (coupon.usedCount >= (coupon === null || coupon === void 0 ? void 0 : coupon.usageLimit)) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon has reached its usage limit");
+    }
+    if (coupon.validFrom > new Date() || coupon.validTo < new Date()) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon is not valid");
+    }
+    if (!coupon.active) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Coupon is not active");
+    }
+    return coupon;
+});
 const updateCouponCount = (code) => __awaiter(void 0, void 0, void 0, function* () {
     yield coupons_model_1.Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
 });
@@ -68,4 +84,5 @@ exports.CouponServices = {
     updateCoupon,
     getAllCoupons,
     updateCouponCount,
+    applyCoupon,
 };
