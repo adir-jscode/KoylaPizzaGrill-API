@@ -12,25 +12,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PaymentServices = void 0;
-const stripe_1 = require("../../config/stripe");
-const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
-const payment_model_1 = require("./payment.model");
+exports.PaymentControllers = void 0;
+const payment_service_1 = require("./payment.service");
+const sendResponse_1 = require("../../utils/sendResponse");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
-const paymentIntent = (amount, transactionId, customerEmail) => __awaiter(void 0, void 0, void 0, function* () {
-    yield stripe_1.stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // in cents
-        currency: "usd", // change if needed
-        metadata: { transactionId },
-        receipt_email: customerEmail || undefined,
-    });
-});
-const togglePaymentStatus = (paymentId, status) => __awaiter(void 0, void 0, void 0, function* () {
-    const payment = yield payment_model_1.Payment.findById(paymentId);
-    if (!payment) {
-        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment not found");
+const togglePaymentStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const payment = yield payment_service_1.PaymentServices.togglePaymentStatus(req.params.id, req.body.status);
+        (0, sendResponse_1.sendResponse)(res, {
+            success: true,
+            statusCode: http_status_codes_1.default.OK,
+            message: "Status changed successfully",
+            data: payment,
+        });
     }
-    payment.status = status;
-    payment.save();
+    catch (error) {
+        next(error);
+    }
 });
-exports.PaymentServices = { paymentIntent, togglePaymentStatus };
+exports.PaymentControllers = { togglePaymentStatus };

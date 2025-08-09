@@ -6,41 +6,32 @@ import {
   ISecondaryOption,
 } from "./menuItem.interface";
 
-const AddonSchema = new Schema<IAddon>(
-  {
-    name: { type: String, required: true },
-    price: { type: Number, required: true },
-  },
-  { _id: false, versionKey: false }
-);
+const AddonSchema = new Schema<IAddon>({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+});
 
-const PrimaryOptionSchema = new Schema<IPrimaryOption>(
-  {
-    name: { type: String },
-    options: [
-      {
-        name: { type: String },
-        price: { type: Number, default: 0 },
-      },
-    ],
-  },
-  { _id: false, versionKey: false }
-);
+const PrimaryOptionSchema = new Schema<IPrimaryOption>({
+  name: { type: String },
+  options: [
+    {
+      name: { type: String },
+      price: { type: Number, default: 0 },
+    },
+  ],
+});
 
-const SecondaryOptionSchema = new Schema<ISecondaryOption>(
-  {
-    name: { type: String, required: true },
-    minSelect: { type: Number, required: true },
-    maxSelect: { type: Number, required: true },
-    options: [
-      {
-        name: { type: String, required: true },
-        price: { type: Number, default: 0 },
-      },
-    ],
-  },
-  { _id: false, versionKey: false }
-);
+const SecondaryOptionSchema = new Schema<ISecondaryOption>({
+  name: { type: String, required: true },
+  minSelect: { type: Number, required: true },
+  maxSelect: { type: Number, required: true },
+  options: [
+    {
+      name: { type: String, required: true },
+      price: { type: Number, default: 0 },
+    },
+  ],
+});
 
 const MenuItemSchema = new Schema<IMenuItem>(
   {

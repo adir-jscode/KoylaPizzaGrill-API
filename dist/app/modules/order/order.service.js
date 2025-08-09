@@ -358,7 +358,9 @@ const filteredOrders = (query) => __awaiter(void 0, void 0, void 0, function* ()
         filter.customerName = { $regex: query.customerName, $options: "i" };
     }
     // Fetch and sort descending by creation
-    const orders = yield order_model_1.Order.find(filter).sort({ createdAt: -1 });
+    const orders = yield order_model_1.Order.find(filter)
+        .sort({ createdAt: -1 })
+        .populate("payment");
     return orders;
 });
 const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -448,7 +450,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
         }
         // Calculate delivery fee
-        const resSettings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
         console.log("payload delivery charge = ", payload.deliveryCharge);
         const deliveryFee = payload.orderType === order_interface_1.OrderType.DELIVERY
             ? payload.deliveryCharge
@@ -605,7 +606,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 const trackByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
-    const order = yield order_model_1.Order.findOne({ orderNumber }).populate("payment");
+    const order = yield order_model_1.Order.findOne({ orderNumber });
     return order;
 });
 exports.OrderServices = {

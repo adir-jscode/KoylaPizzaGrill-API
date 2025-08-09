@@ -12,6 +12,7 @@ const scheduledClosing_route_1 = require("../modules/scheduledClosing/scheduledC
 const restaurantHour_route_1 = require("../modules/restaurantHour/restaurantHour.route");
 const order_routes_1 = require("../modules/order/order.routes");
 const otp_route_1 = require("../modules/otp/otp.route");
+const payment_route_1 = require("../modules/payment/payment.route");
 exports.router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -53,6 +54,10 @@ const moduleRoutes = [
     {
         path: "/otp",
         route: otp_route_1.OtpRoutes,
+    },
+    {
+        path: "/payment",
+        route: payment_route_1.PaymentRoutes,
     },
 ];
 moduleRoutes.forEach((route) => {

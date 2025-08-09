@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createPaymentZodSchema = void 0;
+exports.changePaymentStatusZodSchema = exports.createPaymentZodSchema = void 0;
 const zod_1 = require("zod");
 const paymentMethodEnum = zod_1.z.enum(["CARD", "CASH"]);
 const paymentStatusEnum = zod_1.z.enum([
@@ -19,4 +19,7 @@ exports.createPaymentZodSchema = zod_1.z.object({
     invoiceUrl: zod_1.z.string().url().optional(),
     status: paymentStatusEnum,
     paymentMethod: paymentMethodEnum,
+});
+exports.changePaymentStatusZodSchema = zod_1.z.object({
+    status: paymentStatusEnum,
 });
