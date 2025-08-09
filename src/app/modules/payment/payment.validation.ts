@@ -19,3 +19,7 @@ export const createPaymentZodSchema = z.object({
   status: paymentStatusEnum,
   paymentMethod: paymentMethodEnum,
 });
+
+export const changePaymentStatusZodSchema = z.object({
+  status: paymentStatusEnum,
+});

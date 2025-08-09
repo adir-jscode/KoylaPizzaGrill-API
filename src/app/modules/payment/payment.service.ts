@@ -1,6 +1,10 @@
 import { stripe } from "../../config/stripe";
+import AppError from "../../errorHelpers/AppError";
+import { PAYMENT_STATUS } from "./payment.interface";
+import { Payment } from "./payment.model";
+import httpStatus from "http-status-codes";
 
-export const paymentIntent = async (
+const paymentIntent = async (
   amount: number,
   transactionId: string,
   customerEmail: string
@@ -12,3 +16,17 @@ export const paymentIntent = async (
     receipt_email: customerEmail || undefined,
   });
 };
+
+const togglePaymentStatus = async (
+  paymentId: string,
+  status: PAYMENT_STATUS
+) => {
+  const payment = await Payment.findById(paymentId);
+  if (!payment) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payment not found");
+  }
+  payment.status = status;
+  payment.save();
+};
+
+export const PaymentServices = { paymentIntent, togglePaymentStatus };
