@@ -21,13 +21,13 @@ const order_service_1 = require("./order.service");
 // POST /orders/payment-intent
 const createPaymentIntent = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { total, customerEmail } = req.body;
+        const orderinfo = yield order_service_1.OrderServices.calulateOrderAmount(req.body);
         const paymentIntent = yield stripe_1.stripe.paymentIntents.create({
-            amount: Math.round(Number(total) * 100),
+            amount: Number(Math.round(Number(orderinfo.total) * 100).toFixed(2)),
             currency: "usd",
             payment_method_types: ["card"],
             metadata: { tempId: Date.now().toString() },
-            receipt_email: customerEmail,
+            receipt_email: orderinfo.customerEmail,
         });
         (0, sendResponse_1.sendResponse)(res, {
             statusCode: http_status_codes_1.default.CREATED,

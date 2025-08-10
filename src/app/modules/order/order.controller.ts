@@ -17,14 +17,14 @@ const createPaymentIntent = async (
   next: NextFunction
 ) => {
   try {
-    const { total, customerEmail } = req.body;
+    const orderinfo = await OrderServices.calulateOrderAmount(req.body);
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(total) * 100),
+      amount: Number(Math.round(Number(orderinfo.total) * 100).toFixed(2)),
       currency: "usd",
       payment_method_types: ["card"],
       metadata: { tempId: Date.now().toString() },
-      receipt_email: customerEmail,
+      receipt_email: orderinfo.customerEmail,
     });
 
     sendResponse(res, {

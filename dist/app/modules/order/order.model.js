@@ -58,6 +58,7 @@ const OrderSchema = new mongoose_1.Schema({
         required: true,
     },
     isScheduled: { type: Boolean, required: true },
+    scheduledTime: { type: Date },
     deliveryAddress: { type: String },
     orderItems: { type: [OrderItemSchema], required: true },
     subtotal: { type: Number, required: true },

@@ -18,7 +18,7 @@ export const createCouponZodSchema = z.object({
     (arg) => (typeof arg === "string" ? new Date(arg) : arg),
     z.date()
   ),
-  usageLimit: z.number().int().positive().optional(),
+  usageLimit: z.number().int().positive().optional().default(0),
   usedCount: z.number().int().min(0).default(0),
   active: z.boolean().default(true),
 });

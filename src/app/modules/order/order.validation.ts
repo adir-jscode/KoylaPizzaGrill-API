@@ -19,10 +19,12 @@ const orderItemSchema = z.object({
   name: z.string().optional(), // will be filled by server
   basePrice: z.number().optional(),
   quantity: z.number().int().min(1),
-  primaryOption: z.object({
-    name: z.string(),
-    price: z.number().optional(), // server fills price
-  }),
+  primaryOption: z
+    .object({
+      name: z.string(),
+      price: z.number().optional(), // server fills price
+    })
+    .optional(),
   secondaryOptions: z
     .array(
       z.object({
@@ -54,6 +56,7 @@ export const createOrderZodSchema = z.object({
   customerPhone: z.string().min(1),
   orderType: orderTypeEnum,
   isScheduled: z.boolean(),
+  scheduledTime: z.string().optional(), // expected date
   deliveryAddress: z.string().optional(),
   deliveryCharge: z.number().optional(),
   orderItems: z.array(orderItemSchema).min(1),

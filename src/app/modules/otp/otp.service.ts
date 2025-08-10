@@ -27,7 +27,7 @@ const sendOtp = async (email: string, name: string) => {
 const verifyOtp = async (email: string, otp: string) => {
   try {
     console.log(email);
-    console.log(otp);
+    console.log("from payload", otp);
     const redisKey = `otp:${email}`;
     const savedOtp = await redisClient.get(redisKey);
     console.log(savedOtp);

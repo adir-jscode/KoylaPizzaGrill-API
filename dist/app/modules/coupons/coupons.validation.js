@@ -16,7 +16,7 @@ exports.createCouponZodSchema = zod_1.z.object({
     maxDiscount: zod_1.z.number().nonnegative().optional(),
     validFrom: zod_1.z.preprocess((arg) => (typeof arg === "string" ? new Date(arg) : arg), zod_1.z.date()),
     validTo: zod_1.z.preprocess((arg) => (typeof arg === "string" ? new Date(arg) : arg), zod_1.z.date()),
-    usageLimit: zod_1.z.number().int().positive().optional(),
+    usageLimit: zod_1.z.number().int().positive().optional().default(0),
     usedCount: zod_1.z.number().int().min(0).default(0),
     active: zod_1.z.boolean().default(true),
 });

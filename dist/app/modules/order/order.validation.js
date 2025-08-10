@@ -18,10 +18,12 @@ const orderItemSchema = zod_1.z.object({
     name: zod_1.z.string().optional(), // will be filled by server
     basePrice: zod_1.z.number().optional(),
     quantity: zod_1.z.number().int().min(1),
-    primaryOption: zod_1.z.object({
+    primaryOption: zod_1.z
+        .object({
         name: zod_1.z.string(),
         price: zod_1.z.number().optional(), // server fills price
-    }),
+    })
+        .optional(),
     secondaryOptions: zod_1.z
         .array(zod_1.z.object({
         name: zod_1.z.string(),
@@ -47,6 +49,7 @@ exports.createOrderZodSchema = zod_1.z.object({
     customerPhone: zod_1.z.string().min(1),
     orderType: orderTypeEnum,
     isScheduled: zod_1.z.boolean(),
+    scheduledTime: zod_1.z.string().optional(), // expected date
     deliveryAddress: zod_1.z.string().optional(),
     deliveryCharge: zod_1.z.number().optional(),
     orderItems: zod_1.z.array(orderItemSchema).min(1),

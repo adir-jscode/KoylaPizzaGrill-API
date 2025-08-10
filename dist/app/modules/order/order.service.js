@@ -36,256 +36,6 @@ const generateOrderNumber = (length = 6) => {
     const randomNum = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length);
     return `KPG-${randomNum}`;
 };
-//   payload: IOrder & { paymentMethod: PAYMENT_METHOD }
-// ) => {
-//   const transactionId = getTransactionId();
-//   const session = await Order.startSession();
-//   console.log(payload);
-//   session.startTransaction();
-//   try {
-//     let subtotal = 0;
-//     let preparedItems: IOrderItem[] = [];
-//     for (const orderItem of payload.orderItems) {
-//       const menuItem = await MenuItem.findById(orderItem.menuItemId).lean();
-//       if (!menuItem)
-//         throw new AppError(
-//           httpStatus.NOT_FOUND,
-//           `Menu item ${orderItem.menuItemId} not found.`
-//         );
-//       let basePrice = menuItem.price;
-//       let primaryOptPrice = 0;
-//       if (orderItem.primaryOption) {
-//         const foundOpt = menuItem.primaryOption.options.find(
-//           (opt) => opt.name === orderItem.primaryOption.name
-//         );
-//         basePrice = primaryOptPrice = foundOpt?.price ?? 0;
-//       }
-//       // Prepare secondaryOptions with individual prices
-//       let secondaryOptionsWithPrice: typeof orderItem.secondaryOptions =
-//         undefined;
-//       let secondaryTotal = 0;
-//       if (orderItem.secondaryOptions && menuItem.secondaryOptions) {
-//         secondaryOptionsWithPrice = orderItem.secondaryOptions.map((so) => {
-//           const foundSecondary = menuItem?.secondaryOptions?.find(
-//             (ms) => ms.name === so.name
-//           );
-//           const optPrice =
-//             foundSecondary?.options.find((opt) => opt.name === so.name)
-//               ?.price ??
-//             so.price ??
-//             0;
-//           secondaryTotal += optPrice;
-//           return { ...so, price: optPrice };
-//         });
-//       }
-//       // Prepare addons with individual prices
-//       let addonsWithPrice: typeof orderItem.addons = undefined;
-//       let addonsTotal = 0;
-//       if (orderItem.addons && menuItem.addons) {
-//         addonsWithPrice = orderItem.addons.map((addon) => {
-//           const foundAddon = menuItem?.addons?.find(
-//             (ma) => ma.name === addon.name
-//           );
-//           const addonPrice = foundAddon?.price ?? addon.price ?? 0;
-//           addonsTotal += addonPrice;
-//           return { ...addon, price: addonPrice };
-//         });
-//       }
-//       const totalPrice =
-//         (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
-//       subtotal += totalPrice;
-//       preparedItems.push({
-//         ...orderItem,
-//         name: menuItem.name,
-//         basePrice,
-//         primaryOption: {
-//           ...orderItem.primaryOption,
-//           price: primaryOptPrice,
-//         },
-//         secondaryOptions: secondaryOptionsWithPrice,
-//         addons: addonsWithPrice,
-//         totalPrice,
-//       });
-//     }
-//     let deliveryFee = 0;
-//     if (payload.orderType === OrderType.DELIVERY) deliveryFee = 5; // adjust as needed
-//     const tip = payload.tip ?? 0;
-//     let discount = 0;
-//     // Valid coupon application
-//     if (payload.couponCode) {
-//       const coupon = await Coupon.findOne({
-//         code: payload.couponCode,
-//         active: true,
-//         validFrom: { $lte: new Date() },
-//         validTo: { $gte: new Date() },
-//         $or: [{ usageLimit: null }, { usageLimit: { $gt: 0 } }],
-//       });
-//       if (!coupon) {
-//         throw new AppError(httpStatus.FORBIDDEN, "Invalid coupon code");
-//       }
-//       if (coupon && subtotal >= coupon.minOrder) {
-//         if (coupon.type === Type.PERCENTAGE) {
-//           discount = subtotal * (coupon.value / 100);
-//           if (coupon.maxDiscount)
-//             discount = Math.min(discount, coupon.maxDiscount);
-//         } else {
-//           discount = coupon.value;
-//         }
-//       }
-//     }
-//     discount = Math.max(discount, 0);
-//     const settings = await RestaurantSettings.findOne();
-//     const TAX_RATE = (settings?.taxRate as number) / 100;
-//     const tax = Number(((subtotal - discount) * TAX_RATE).toFixed(2));
-//     const total = Number(
-//       (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
-//     );
-//     const orderNumber = generateOrderNumber();
-//     let paymentStatus = PAYMENT_STATUS.UNPAID;
-//     let orderStatus: IStatusHistory["status"] = "PENDING";
-//     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
-//       paymentStatus = PAYMENT_STATUS.UNPAID;
-//       orderStatus = "CONFIRMED";
-//     }
-//     //order history
-//     const statusHistory: IStatusHistory[] = [
-//       {
-//         status: "PENDING" as IStatusHistory["status"],
-//         updatedAt: new Date().toISOString(),
-//       },
-//       ...(orderStatus === "CONFIRMED"
-//         ? [
-//             {
-//               status: "CONFIRMED" as IStatusHistory["status"],
-//               updatedAt: new Date().toISOString(),
-//             },
-//           ]
-//         : []),
-//     ];
-//     // Prepare Payment doc
-//     const paymentDocArr = await Payment.create(
-//       [
-//         {
-//           order: undefined, // will link after
-//           transactionId, // temp
-//           amount: total,
-//           status: paymentStatus,
-//           paymentMethod: payload.paymentMethod,
-//         },
-//       ],
-//       { session }
-//     );
-//     let paymentDoc = paymentDocArr[0];
-//     // Create Order doc
-//     const orderDocArr = await Order.create(
-//       [
-//         {
-//           ...payload,
-//           orderNumber,
-//           orderItems: preparedItems,
-//           subtotal: Number(subtotal.toFixed(2)),
-//           deliveryFee,
-//           tax,
-//           tip,
-//           discount,
-//           total,
-//           status: orderStatus,
-//           statusHistory,
-//           payment: paymentDoc._id,
-//         },
-//       ],
-//       { session }
-//     );
-//     let orderDoc = orderDocArr[0];
-//     // Link payment -> order
-//     await Payment.findByIdAndUpdate(
-//       paymentDoc._id,
-//       { order: orderDoc._id },
-//       { session }
-//     );
-//     // Stripe PaymentIntent Logic
-//     let clientSecret: string | undefined = undefined;
-//     let updatedPaymentDoc = paymentDoc;
-//     const { paymentIntentId } = payload;
-//     if (payload.paymentMethod === PAYMENT_METHOD.CARD && paymentIntentId) {
-//       const paymentIntent = await stripe.paymentIntents.retrieve(
-//         paymentIntentId as string
-//       );
-//       if (paymentIntent.status !== "succeeded") {
-//         throw new AppError(
-//           httpStatus.PAYMENT_REQUIRED,
-//           "Payment not completed"
-//         );
-//       }
-//       const updatedPayment = await Payment.findByIdAndUpdate(
-//         paymentDoc._id,
-//         {
-//           transactionId: transactionId,
-//           paymentIntentId: paymentIntent,
-//           status: PAYMENT_STATUS.UNPAID,
-//         },
-//         { new: true, session }
-//       );
-//       if (!updatedPayment) {
-//         throw new Error(
-//           "Failed to update payment document with PaymentIntent info"
-//         );
-//       }
-//       updatedPaymentDoc = updatedPayment;
-//       //clientSecret = paymentIntent?.client_secret ?? undefined;
-//     }
-//     // Commit and close session **before reading order again**
-//     await session.commitTransaction();
-//     session.endSession();
-//     // Now fetch the latest versions OUTSIDE THE SESSION if you want to ensure all is saved.
-//     const latestOrder = await Order.findById(orderDoc._id);
-//     const latestPayment = await Payment.findById(paymentDoc._id);
-//     // if (latestOrder && latestOrder.customerEmail) {
-//     //   try {
-//     //     await sendEmail({
-//     //       to: latestOrder.customerEmail,
-//     //       subject: `Your Order Confirmation: ${latestOrder.orderNumber}`,
-//     //       templateName: "order", // Name of your .ejs file (without .ejs)
-//     //       templateData: {
-//     //         customerName: latestOrder.customerName,
-//     //         orderNumber: latestOrder.orderNumber,
-//     //         orderDateTime: new Date().toLocaleString("en-US", {
-//     //           timeZone: "Asia/Dhaka",
-//     //         }),
-//     //         orderType: latestOrder.orderType,
-//     //         deliveryAddress: latestOrder.deliveryAddress,
-//     //         specialInstructions: latestOrder.specialInstructions,
-//     //         status: latestOrder.status,
-//     //         orderItems: latestOrder.orderItems,
-//     //         subtotal: latestOrder.subtotal,
-//     //         deliveryFee: latestOrder.deliveryFee || 0,
-//     //         tip: latestOrder.tip || 0,
-//     //         discount: latestOrder.discount || 0,
-//     //         tax: latestOrder.tax,
-//     //         total: latestOrder.total,
-//     //         couponCode: latestOrder.couponCode,
-//     //       },
-//     //     });
-//     //   } catch (emailError: any) {
-//     //     // Log, but don't block order completion
-//     //     console.error(
-//     //       "Order confirmation email failed:",
-//     //       emailError?.message || emailError
-//     //     );
-//     //   }
-//     // }
-//     // Return freshest docs
-//     return {
-//       order: latestOrder ?? orderDoc,
-//       payment: latestPayment ?? updatedPaymentDoc ?? paymentDoc,
-//       clientSecret,
-//     };
-//   } catch (error) {
-//     await session.abortTransaction();
-//     session.endSession();
-//     throw error;
-//   }
-// };
 const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
     const order = yield order_model_1.Order.findById(orderId);
     if (!order) {
@@ -391,15 +141,10 @@ const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0
     order.save();
     return { order: order.statusHistory };
 });
-const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e, _f;
-    const transactionId = getTransactionId();
-    const session = yield order_model_1.Order.startSession();
-    yield session.startTransaction();
+const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     try {
         console.log("from frontend payload = ", payload);
-        let orderDoc;
-        let paymentDoc;
         let subtotal = 0;
         let preparedItems = [];
         // Calculate item prices and prepare items for order
@@ -411,8 +156,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             let basePrice = (_a = menuItem.price) !== null && _a !== void 0 ? _a : 0;
             // Primary option price
             let primaryOptPrice = 0;
-            if (orderItem.primaryOption) {
-                basePrice = (_c = (_b = orderItem.primaryOption) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : 0;
+            if (orderItem.primaryOption.price) {
+                basePrice = (_b = orderItem.primaryOption) === null || _b === void 0 ? void 0 : _b.price;
             }
             // Secondary options with individual prices and totals
             let secondaryOptionsWithPrice = undefined;
@@ -447,14 +192,14 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             console.log(totalPrice);
             console.log("subtotal", subtotal);
             // Push prepared item to array
-            preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: primaryOptPrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
+            preparedItems.push(Object.assign(Object.assign({}, orderItem), { name: menuItem.name, basePrice, primaryOption: Object.assign(Object.assign({}, orderItem.primaryOption), { price: basePrice }), secondaryOptions: secondaryOptionsWithPrice, addons: addonsWithPrice, totalPrice }));
         }
         // Calculate delivery fee
         console.log("payload delivery charge = ", payload.deliveryCharge);
         const deliveryFee = payload.orderType === order_interface_1.OrderType.DELIVERY
             ? payload.deliveryCharge
             : 0;
-        const tip = (_d = payload.tip) !== null && _d !== void 0 ? _d : 0;
+        const tip = (_c = payload.tip) !== null && _c !== void 0 ? _c : 0;
         let discount = 0;
         // Apply coupon discount if valid
         if (payload.couponCode) {
@@ -489,9 +234,39 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         console.log("tex =", tax);
         console.log("tip =", tip);
         const total = Number((subtotal - discount + deliveryFee + tax + tip).toFixed(2));
+        const customerEmail = payload.customerEmail;
+        const isScheduled = payload.isScheduled;
+        const scheduledTime = payload.scheduledTime;
         console.log("grand total = ", total);
+        return {
+            customerEmail,
+            total,
+            preparedItems,
+            subtotal,
+            discount,
+            deliveryFee,
+            tax,
+            tip,
+            isScheduled,
+            scheduledTime,
+        };
+    }
+    catch (error) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "calculation error", error);
+    }
+});
+const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    const session = yield order_model_1.Order.startSession();
+    yield session.startTransaction();
+    try {
         const orderNumber = generateOrderNumber();
+        const transactionId = getTransactionId();
+        let orderDoc;
+        let paymentDoc;
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
+        const calculation = yield calulateOrderAmount(payload);
+        console.log(calculation);
         let orderStatus = "PENDING";
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
@@ -523,7 +298,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                     order: undefined,
                     transactionId,
                     paymentIntentId,
-                    amount: total,
+                    amount: Number(calculation.total.toFixed(2)),
                     status: payment_interface_1.PAYMENT_STATUS.PAID,
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CARD,
                 },
@@ -531,17 +306,16 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             paymentDoc = paymentDocs[0]; // <-- correctly accessed after await
             // Await Order.create and get first document
             const orderDocs = yield order_model_1.Order.create([
-                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
-                    tax,
-                    tip,
-                    discount,
-                    total, status: "CONFIRMED", statusHistory: [
+                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: Number(calculation.deliveryFee.toFixed(2)), tax: Number(calculation.tax.toFixed(2)), tip: Number(calculation.tip.toFixed(2)), scheduledTime: calculation.isScheduled
+                        ? calculation.scheduledTime
+                        : undefined, discount: Number(calculation.discount.toFixed(2)), total: Number(calculation.total.toFixed(2)), status: "CONFIRMED", statusHistory: [
                         { status: "PENDING", updatedAt: new Date().toISOString() },
                         { status: "CONFIRMED", updatedAt: new Date().toISOString() },
                     ], payment: paymentDoc._id }),
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
+            const TrackOrder = `https://koylapizza.com/track-order?orderNumber=${orderNumber}`;
             yield (0, sendMail_1.sendEmail)({
                 to: payload.customerEmail,
                 subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
@@ -549,20 +323,19 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 templateData: {
                     customerName: payload.customerName,
                     orderNumber: orderNumber,
-                    orderDateTime: new Date().toLocaleString("en-US", {
-                        timeZone: "Asia/Dhaka",
-                    }),
-                    orderItems: preparedItems,
-                    subtotal: Number(subtotal),
-                    deliveryFee: Number(deliveryFee),
-                    tip: Number(tip),
-                    discount: Number(discount),
-                    tax: Number(tax),
-                    total: Number(total),
+                    orderDateTime: new Date().toLocaleString("en-US"),
+                    orderItems: calculation.preparedItems,
+                    subtotal: Number(calculation.subtotal),
+                    deliveryFee: Number(calculation.deliveryFee),
+                    tip: Number(calculation.tip),
+                    discount: Number(calculation.discount),
+                    tax: Number(calculation.tax),
+                    total: Number(calculation.total.toFixed(2)),
                     orderType: payload.orderType,
-                    deliveryAddress: (_e = payload.deliveryAddress) !== null && _e !== void 0 ? _e : "",
-                    specialInstructions: (_f = payload.specialInstructions) !== null && _f !== void 0 ? _f : "",
+                    deliveryAddress: (_a = payload.deliveryAddress) !== null && _a !== void 0 ? _a : "",
+                    specialInstructions: (_b = payload.specialInstructions) !== null && _b !== void 0 ? _b : "",
                     status: "CONFIRMED",
+                    TrackOrder: TrackOrder,
                 },
             });
         }
@@ -574,18 +347,14 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
                 {
                     order: undefined,
                     transactionId: transactionId,
-                    amount: total,
+                    total: Number(calculation.total.toFixed(2)),
                     status: payment_interface_1.PAYMENT_STATUS.UNPAID,
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CASH,
                 },
             ], { session });
             paymentDoc = paymentDocs[0];
             const orderDocs = yield order_model_1.Order.create([
-                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: preparedItems, subtotal: Number(subtotal.toFixed(2)), deliveryFee,
-                    tax,
-                    tip,
-                    discount,
-                    total, status: orderStatus, statusHistory, payment: paymentDoc._id }),
+                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: calculation.deliveryFee, tax: calculation.tax, tip: calculation.tip, discount: calculation.discount, total: Number(calculation.total.toFixed(2)), status: orderStatus, statusHistory, payment: paymentDoc._id }),
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
@@ -606,7 +375,10 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 const trackByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
-    const order = yield order_model_1.Order.findOne({ orderNumber });
+    const order = yield order_model_1.Order.findOne({ orderNumber }).select("-payment");
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "order not found");
+    }
     return order;
 });
 exports.OrderServices = {
@@ -617,4 +389,5 @@ exports.OrderServices = {
     changeOrderStatus,
     updatePaymentOrderStatus,
     orderHistoryByOrderNumber,
+    calulateOrderAmount,
 };

@@ -17,8 +17,8 @@ const OrderItemSchema = new Schema<IOrderItem>(
     basePrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
     primaryOption: {
-      name: { type: String, required: true },
-      price: { type: Number, required: true },
+      name: { type: String },
+      price: { type: Number },
     },
     secondaryOptions: [
       {
@@ -70,6 +70,7 @@ const OrderSchema = new Schema<IOrder & Document>(
       required: true,
     },
     isScheduled: { type: Boolean, required: true },
+    scheduledTime: { type: Date },
     deliveryAddress: { type: String },
     orderItems: { type: [OrderItemSchema], required: true },
     subtotal: { type: Number, required: true },

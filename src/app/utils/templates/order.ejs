@@ -49,6 +49,21 @@
       .order-summary td {
         padding: 6px;
       }
+      /* Track Order Button styles */
+      .track-btn {
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: #e53935;
+        color: #fff !important;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-top: 16px;
+        font-size: 15px;
+      }
+      .track-btn:hover {
+        background-color: #c62828;
+      }
     </style>
   </head>
   <body>
@@ -120,17 +135,25 @@
 
         <p>
           <b>Order Type:</b> <%= orderType %><br />
-          <% if (deliveryAddress) { %><b>Delivery Address:</b> <%=
-          deliveryAddress %><br /><% } %> <% if (specialInstructions) { %><b
-            >Special Instructions:</b
-          >
-          <%= specialInstructions %><br /><% } %> <b>Status:</b> <%= status %>
+          <% if (deliveryAddress) { %>
+          <b>Delivery Address:</b> <%= deliveryAddress %><br />
+          <% } %> <% if (specialInstructions) { %>
+          <b>Special Instructions:</b> <%= specialInstructions %><br />
+          <% } %>
+          <b>Status:</b> <%= status %>
         </p>
+
+        <!-- Track Order Button -->
+        <p style="text-align: center">
+          <a href="<%= TrackOrder %>" class="track-btn"> Track Order </a>
+        </p>
+
         <p style="font-size: 14px; color: #555">
           Having an issue? You can reply directly to this email or call us at
           <b>(718) 682-7870</b>.
         </p>
       </div>
+
       <div class="footer">
         This is an order confirmation email from Koyla Pizza Grill (<a
           href="https://koylapizza.com"

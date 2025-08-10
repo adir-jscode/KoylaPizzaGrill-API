@@ -40,6 +40,7 @@ export interface IOrder {
   customerPhone: string;
   orderType: OrderType;
   isScheduled: boolean;
+  scheduledTime?: Date;
   deliveryAddress?: string;
   orderItems: IOrderItem[];
   subtotal: number;

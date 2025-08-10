@@ -14,10 +14,10 @@ const couponSchema = new mongoose_1.Schema({
     },
     value: { type: Number, required: true },
     minOrder: { type: Number, default: 0 },
-    maxDiscount: Number,
+    maxDiscount: { type: Number },
     validFrom: { type: Date, required: true },
     validTo: { type: Date, required: true },
-    usageLimit: Number,
+    usageLimit: { type: Number, default: 0 },
     usedCount: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
 }, {
