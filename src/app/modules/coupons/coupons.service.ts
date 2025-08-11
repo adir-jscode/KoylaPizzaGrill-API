@@ -35,7 +35,12 @@ const applyCoupon = async (code: string) => {
 };
 
 const updateCouponCount = async (code: string) => {
-  await Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
+  const coupon = await Coupon.findOne({ code: code });
+  if (!coupon) {
+    throw new AppError(httpStatus.BAD_REQUEST, "coupon not found");
+  }
+  coupon.usedCount = coupon.usedCount + 1;
+  await coupon.save();
 };
 
 const updateCouponStatus = async (id: string, payload: Partial<ICoupon>) => {

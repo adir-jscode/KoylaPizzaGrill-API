@@ -29,6 +29,7 @@ const otp_service_1 = require("../otp/otp.service");
 const sendMail_1 = require("../../utils/sendMail");
 const crypto_1 = __importDefault(require("crypto"));
 const coupons_service_1 = require("../coupons/coupons.service");
+const env_1 = require("../../config/env");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
@@ -118,33 +119,21 @@ const changeOrderStatus = (orderId, payload) => __awaiter(void 0, void 0, void 0
     if (!order) {
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
     }
-    if (payload.status === "CONFIRMED") {
-        order.status = payload.status;
-        order.statusHistory.push({
-            status: payload.status,
-            updatedAt: new Date().toISOString(),
-        });
-        const payment = yield payment_model_1.Payment.findById(order.payment);
-        if (!payment) {
-            throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment not received");
-        }
-        payment.status = payment_interface_1.PAYMENT_STATUS.PAID;
-        payment.save();
-    }
-    else {
-        order.status = payload.status;
-        order.statusHistory.push({
-            status: payload.status,
-            updatedAt: new Date().toISOString(),
-        });
-    }
-    order.save();
-    return { order: order.statusHistory };
+    const updatedOrder = yield order_model_1.Order.findByIdAndUpdate(orderId, {
+        status: payload.status,
+        $push: {
+            statusHistory: {
+                status: payload.status,
+                updatedAt: new Date().toISOString(),
+            },
+        },
+    }, { new: true }).populate("payment");
+    return { order: updatedOrder };
 });
 const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
     try {
-        console.log("from frontend payload = ", payload);
+        console.log("payload from front", payload);
         let subtotal = 0;
         let preparedItems = [];
         // Calculate item prices and prepare items for order
@@ -153,10 +142,10 @@ const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, funct
             if (!menuItem)
                 throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, `Menu item ${orderItem.menuItemId} not found.`);
             // Base price from menu item
-            let basePrice = (_a = menuItem.price) !== null && _a !== void 0 ? _a : 0;
+            let basePrice = (_a = orderItem.basePrice) !== null && _a !== void 0 ? _a : 0;
             // Primary option price
             let primaryOptPrice = 0;
-            if (orderItem.primaryOption.price) {
+            if (orderItem.primaryOption) {
                 basePrice = (_b = orderItem.primaryOption) === null || _b === void 0 ? void 0 : _b.price;
             }
             // Secondary options with individual prices and totals
@@ -222,7 +211,6 @@ const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, funct
                     discount = coupon.value;
                 }
             }
-            yield coupons_service_1.CouponServices.updateCouponCount(coupon.code);
         }
         discount = Math.max(discount, 0);
         const settings = yield restaurantSettings_model_1.RestaurantSettings.findOne();
@@ -252,12 +240,14 @@ const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, funct
         };
     }
     catch (error) {
-        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "calculation error", error);
+        console.log(error);
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "calculation error");
     }
 });
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const session = yield order_model_1.Order.startSession();
+    let transactionCommitted = false;
     yield session.startTransaction();
     try {
         const orderNumber = generateOrderNumber();
@@ -266,8 +256,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         let paymentDoc;
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         const calculation = yield calulateOrderAmount(payload);
-        console.log(calculation);
-        let orderStatus = "PENDING";
+        let orderStatus = "CONFIRMED";
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         }
@@ -315,7 +304,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
-            const TrackOrder = `https://koylapizza.com/track-order?orderNumber=${orderNumber}`;
+            const TrackOrder = `${env_1.envVars.VERCEL_URL}track-order?orderNumber=${orderNumber}`;
             yield (0, sendMail_1.sendEmail)({
                 to: payload.customerEmail,
                 subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
@@ -341,35 +330,43 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
-            console.log(payload.otp);
             yield otp_service_1.OtpServices.verifyOtp(payload.customerEmail, payload.otp);
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
                     order: undefined,
                     transactionId: transactionId,
-                    total: Number(calculation.total.toFixed(2)),
+                    amount: Number(calculation.total.toFixed(2)),
                     status: payment_interface_1.PAYMENT_STATUS.UNPAID,
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CASH,
                 },
             ], { session });
             paymentDoc = paymentDocs[0];
             const orderDocs = yield order_model_1.Order.create([
-                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: calculation.deliveryFee, tax: calculation.tax, tip: calculation.tip, discount: calculation.discount, total: Number(calculation.total.toFixed(2)), status: orderStatus, statusHistory, payment: paymentDoc._id }),
+                Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: calculation.deliveryFee, tax: calculation.tax, tip: calculation.tip, discount: calculation.discount, total: Number(calculation.total.toFixed(2)), status: orderStatus, statusHistory: [
+                        { status: "PENDING", updatedAt: new Date().toISOString() },
+                        { status: "CONFIRMED", updatedAt: new Date().toISOString() },
+                    ], payment: paymentDoc._id }),
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
         }
         yield session.commitTransaction();
+        transactionCommitted = true;
         session.endSession();
         const latestOrder = yield order_model_1.Order.findById(orderDoc === null || orderDoc === void 0 ? void 0 : orderDoc._id);
         const latestPayment = yield payment_model_1.Payment.findById(paymentDoc === null || paymentDoc === void 0 ? void 0 : paymentDoc._id);
+        if (payload.couponCode) {
+            yield coupons_service_1.CouponServices.updateCouponCount(payload.couponCode);
+        }
         return {
             order: latestOrder !== null && latestOrder !== void 0 ? latestOrder : orderDoc,
             payment: latestPayment !== null && latestPayment !== void 0 ? latestPayment : paymentDoc,
         };
     }
     catch (error) {
-        yield session.abortTransaction();
+        if (!transactionCommitted) {
+            yield session.abortTransaction();
+        }
         session.endSession();
         throw error;
     }

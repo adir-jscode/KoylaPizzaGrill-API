@@ -27,6 +27,7 @@ const togglePaymentStatus = async (
   }
   payment.status = status;
   payment.save();
+  return payment;
 };
 
 export const PaymentServices = { paymentIntent, togglePaymentStatus };

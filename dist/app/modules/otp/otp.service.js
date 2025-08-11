@@ -38,7 +38,7 @@ const sendOtp = (email, name) => __awaiter(void 0, void 0, void 0, function* () 
 const verifyOtp = (email, otp) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         console.log(email);
-        console.log(otp);
+        console.log("from payload", otp);
         const redisKey = `otp:${email}`;
         const savedOtp = yield radis_config_1.redisClient.get(redisKey);
         console.log(savedOtp);

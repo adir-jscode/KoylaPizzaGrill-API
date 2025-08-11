@@ -32,5 +32,6 @@ const togglePaymentStatus = (paymentId, status) => __awaiter(void 0, void 0, voi
     }
     payment.status = status;
     payment.save();
+    return payment;
 });
 exports.PaymentServices = { paymentIntent, togglePaymentStatus };

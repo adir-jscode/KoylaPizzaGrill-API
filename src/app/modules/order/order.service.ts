@@ -123,33 +123,27 @@ const changeOrderStatus = async (orderId: string, payload: IStatusHistory) => {
   if (!order) {
     throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
   }
-  if (payload.status === "CONFIRMED") {
-    order.status = payload.status;
 
-    order.statusHistory.push({
+  const updatedOrder = await Order.findByIdAndUpdate(
+    orderId,
+    {
       status: payload.status,
-      updatedAt: new Date().toISOString(),
-    });
-    const payment = await Payment.findById(order.payment);
-    if (!payment) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Payment not received");
-    }
-    payment.status = PAYMENT_STATUS.PAID;
-    payment.save();
-  } else {
-    order.status = payload.status;
-    order.statusHistory.push({
-      status: payload.status,
-      updatedAt: new Date().toISOString(),
-    });
-  }
+      $push: {
+        statusHistory: {
+          status: payload.status,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    },
+    { new: true }
+  ).populate("payment");
 
-  order.save();
-  return { order: order.statusHistory };
+  return { order: updatedOrder };
 };
 
 const calulateOrderAmount = async (payload: IOrder) => {
   try {
+    console.log("payload from front", payload);
     let subtotal = 0;
     let preparedItems: IOrderItem[] = [];
 
@@ -205,9 +199,9 @@ const calulateOrderAmount = async (payload: IOrder) => {
       }
 
       // Calculate total price for this order item (including quantity)
-      // console.log(basePrice);
-      // console.log(secondaryTotal);
-      // console.log(addonsTotal);
+      console.log(basePrice);
+      console.log(secondaryTotal);
+      console.log(addonsTotal);
       const totalPrice =
         (basePrice + secondaryTotal + addonsTotal) * orderItem.quantity;
       subtotal += totalPrice;
@@ -258,7 +252,6 @@ const calulateOrderAmount = async (payload: IOrder) => {
           discount = coupon.value;
         }
       }
-      await CouponServices.updateCouponCount(coupon.code);
     }
     discount = Math.max(discount, 0);
 
@@ -267,10 +260,10 @@ const calulateOrderAmount = async (payload: IOrder) => {
     const tax = Number((((subtotal - discount) / 100) * TAX_RATE).toFixed(2));
 
     // Calculate grand total
-    // console.log("discount = ", discount);
-    // console.log("delivery fee =", deliveryFee);
-    // console.log("tex =", tax);
-    // console.log("tip =", tip);
+    console.log("discount = ", discount);
+    console.log("delivery fee =", deliveryFee);
+    console.log("tex =", tax);
+    console.log("tip =", tip);
     const total = Number(
       (subtotal - discount + deliveryFee + tax + tip).toFixed(2)
     );
@@ -304,6 +297,7 @@ const createOrder = async (
   }
 ) => {
   const session = await Order.startSession();
+  let transactionCommitted = false;
   await session.startTransaction();
   try {
     const orderNumber = generateOrderNumber();
@@ -401,7 +395,7 @@ const createOrder = async (
         { order: orderDoc._id },
         { session }
       );
-      const TrackOrder = `${envVars.FRONTEND_URL}track-order?orderNumber=${orderNumber}`;
+      const TrackOrder = `${envVars.VERCEL_URL}/track-order?orderNumber=${orderNumber}`;
       await sendEmail({
         to: payload.customerEmail as string,
         subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
@@ -479,16 +473,21 @@ const createOrder = async (
     }
 
     await session.commitTransaction();
+    transactionCommitted = true;
     session.endSession();
     const latestOrder = await Order.findById(orderDoc?._id);
     const latestPayment = await Payment.findById(paymentDoc?._id);
-
+    if (payload.couponCode) {
+      await CouponServices.updateCouponCount(payload.couponCode as string);
+    }
     return {
       order: latestOrder ?? orderDoc,
       payment: latestPayment ?? paymentDoc,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (!transactionCommitted) {
+      await session.abortTransaction();
+    }
     session.endSession();
     throw error;
   }

@@ -13,8 +13,8 @@ const OrderItemSchema = new mongoose_1.Schema({
     basePrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
     primaryOption: {
-        name: { type: String, required: true },
-        price: { type: Number, required: true },
+        name: { type: String },
+        price: { type: Number },
     },
     secondaryOptions: [
         {

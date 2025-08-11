@@ -41,7 +41,12 @@ const applyCoupon = (code) => __awaiter(void 0, void 0, void 0, function* () {
     return coupon;
 });
 const updateCouponCount = (code) => __awaiter(void 0, void 0, void 0, function* () {
-    yield coupons_model_1.Coupon.findOneAndUpdate({ code }, { usedCount: +1 }, { new: true });
+    const coupon = yield coupons_model_1.Coupon.findOne({ code: code });
+    if (!coupon) {
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "coupon not found");
+    }
+    coupon.usedCount = coupon.usedCount + 1;
+    yield coupon.save();
 });
 const updateCouponStatus = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const isCouponExist = yield coupons_model_1.Coupon.findById(id);
