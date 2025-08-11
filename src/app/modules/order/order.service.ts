@@ -396,6 +396,7 @@ const createOrder = async (
         { session }
       );
       const TrackOrder = `${envVars.VERCEL_URL}/track-order?orderNumber=${orderNumber}`;
+      console.log(TrackOrder);
       await sendEmail({
         to: payload.customerEmail as string,
         subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,

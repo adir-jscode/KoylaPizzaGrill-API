@@ -304,7 +304,8 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
-            const TrackOrder = `${env_1.envVars.VERCEL_URL}track-order?orderNumber=${orderNumber}`;
+            const TrackOrder = `${env_1.envVars.VERCEL_URL}/track-order?orderNumber=${orderNumber}`;
+            console.log(TrackOrder);
             yield (0, sendMail_1.sendEmail)({
                 to: payload.customerEmail,
                 subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
