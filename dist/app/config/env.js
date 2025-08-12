@@ -23,7 +23,7 @@ const loadEnviromentVariables = () => {
         "JWT_REFRESH_SECRET",
         "JWT_REFRESH_EXPIRES",
         "FRONTEND_URL",
-        "VERCEL_URL",
+        "SITE_URL",
         "SMTP_USER",
         "SMTP_PASS",
         "SMTP_PORT",
@@ -55,7 +55,7 @@ const loadEnviromentVariables = () => {
         JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
         JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES,
         FRONTEND_URL: process.env.FRONTEND_URL,
-        VERCEL_URL: process.env.VERCEL_URL,
+        SITE_URL: process.env.SITE_URL,
         EMAIL_SENDER: {
             SMTP_USER: process.env.SMTP_USER,
             SMTP_PASS: process.env.SMTP_PASS,

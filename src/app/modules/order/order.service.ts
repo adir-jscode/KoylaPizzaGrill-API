@@ -395,7 +395,7 @@ const createOrder = async (
         { order: orderDoc._id },
         { session }
       );
-      const TrackOrder = `${envVars.VERCEL_URL}/track-order?orderNumber=${orderNumber}`;
+      const TrackOrder = `${envVars.SITE_URL}/track-order?orderNumber=${orderNumber}`;
       console.log(TrackOrder);
       await sendEmail({
         to: payload.customerEmail as string,

@@ -18,7 +18,7 @@ interface EnvConfig {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES: string;
   FRONTEND_URL: string;
-  VERCEL_URL: string;
+  SITE_URL: string;
   EMAIL_SENDER: {
     SMTP_USER: string;
     SMTP_PASS: string;
@@ -49,7 +49,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     "JWT_REFRESH_SECRET",
     "JWT_REFRESH_EXPIRES",
     "FRONTEND_URL",
-    "VERCEL_URL",
+    "SITE_URL",
     "SMTP_USER",
     "SMTP_PASS",
     "SMTP_PORT",
@@ -83,7 +83,7 @@ const loadEnviromentVariables = (): EnvConfig => {
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET as string,
     JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES as string,
     FRONTEND_URL: process.env.FRONTEND_URL as string,
-    VERCEL_URL: process.env.VERCEL_URL as string,
+    SITE_URL: process.env.SITE_URL as string,
     EMAIL_SENDER: {
       SMTP_USER: process.env.SMTP_USER as string,
       SMTP_PASS: process.env.SMTP_PASS as string,

@@ -67,7 +67,7 @@ const resetPassword = async (
     Number(envVars.BCRYPT_SALT_ROUND)
   );
 
-  user!.save();
+  await user!.save();
 };
 
 export const AuthServices = {
