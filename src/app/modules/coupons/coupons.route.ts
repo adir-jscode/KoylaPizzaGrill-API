@@ -17,13 +17,14 @@ router.post(
   validateRequest(createCouponZodSchema),
   CouponControllers.createCoupon
 );
-
+//delete
 router.delete("/:id", checkAuth, CouponControllers.deleteCoupon);
 router.patch(
   "/update-status/:id",
   checkAuth,
   CouponControllers.UpdateCouponStatus
 );
+//update
 router.put(
   "/:id",
   checkAuth,
