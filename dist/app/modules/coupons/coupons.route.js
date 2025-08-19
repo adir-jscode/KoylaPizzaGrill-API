@@ -9,8 +9,10 @@ const checkAuth_1 = require("../../middlewares/checkAuth");
 const router = (0, express_1.Router)();
 router.get("/", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.getAllCoupons);
 router.post("/add-coupon", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(coupons_validation_1.createCouponZodSchema), coupons_controller_1.CouponControllers.createCoupon);
+//delete
 router.delete("/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.deleteCoupon);
 router.patch("/update-status/:id", checkAuth_1.checkAuth, coupons_controller_1.CouponControllers.UpdateCouponStatus);
+//update
 router.put("/:id", checkAuth_1.checkAuth, (0, validateRequest_1.validateRequest)(coupons_validation_1.updateCouponZodSchema), coupons_controller_1.CouponControllers.UpdateCoupon);
 router.post("/apply-coupon", coupons_controller_1.CouponControllers.applyCoupon);
 exports.CouponRoutes = router;

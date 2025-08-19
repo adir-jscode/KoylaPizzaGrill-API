@@ -62,7 +62,7 @@ const resetPassword = (oldPassword, newPassword, decodedToken) => __awaiter(void
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Old Password does not match");
     }
     user.password = yield bcryptjs_1.default.hash(newPassword, Number(env_1.envVars.BCRYPT_SALT_ROUND));
-    user.save();
+    yield user.save();
 });
 exports.AuthServices = {
     credentialsLogin,
