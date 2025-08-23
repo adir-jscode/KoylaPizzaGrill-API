@@ -19,6 +19,8 @@ interface EnvConfig {
   JWT_REFRESH_EXPIRES: string;
   FRONTEND_URL: string;
   SITE_URL: string;
+  STRIPE_WEBHOOK_SECRET: string;
+  STRIPE_SECRET_KEY: string;
   EMAIL_SENDER: {
     SMTP_USER: string;
     SMTP_PASS: string;
@@ -31,6 +33,10 @@ interface EnvConfig {
   REDIS_PORT: string;
   REDIS_USERNAME: string;
   REDIS_PASSWORD: string;
+  URL: string;
+  FRONTEND_PROD_URL_02?: string;
+  RESEND_API_KEY: string;
+  RESEND_FROM: string;
 }
 const loadEnviromentVariables = (): EnvConfig => {
   const requiredEnvVariables: string[] = [
@@ -59,6 +65,12 @@ const loadEnviromentVariables = (): EnvConfig => {
     "REDIS_PORT",
     "REDIS_USERNAME",
     "REDIS_PASSWORD",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_SECRET_KEY",
+    "URL",
+    "FRONTEND_PROD_URL_02",
+    "RESEND_API_KEY",
+    "RESEND_FROM",
   ];
 
   requiredEnvVariables.forEach((key) => {
@@ -96,6 +108,12 @@ const loadEnviromentVariables = (): EnvConfig => {
     REDIS_PORT: process.env.REDIS_PORT as string,
     REDIS_USERNAME: process.env.REDIS_USERNAME as string,
     REDIS_PASSWORD: process.env.REDIS_PASSWORD as string,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET as string,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
+    URL: process.env.URL as string,
+    FRONTEND_PROD_URL_02: process.env.FRONTEND_PROD_URL_02,
+    RESEND_API_KEY: process.env.RESEND_API_KEY as string,
+    RESEND_FROM: process.env.RESEND_FROM as string,
   };
 };
 export const envVars: EnvConfig = loadEnviromentVariables();

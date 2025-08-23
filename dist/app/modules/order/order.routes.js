@@ -14,4 +14,7 @@ router.put("/:id", checkAuth_1.checkAuth, order_controller_1.OrderControllers.to
 router.get("/filter", checkAuth_1.checkAuth, order_controller_1.OrderControllers.getFilteredOrders);
 router.post("/payment-intent", order_controller_1.OrderControllers.createPaymentIntent);
 router.post("/track", order_controller_1.OrderControllers.trackByOrderNumber);
+//router.post("/webhook", OrderControllers.stripeWebhook);
+router.put("/payment-status/:orderNumber", order_controller_1.OrderControllers.changePaymentOrderStatus);
+// router.delete("/:orderNumber", OrderControllers.deleteOrderByOrderNumber);
 exports.OrderRoutes = router;

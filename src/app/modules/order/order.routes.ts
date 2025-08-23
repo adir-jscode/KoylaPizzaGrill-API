@@ -23,4 +23,10 @@ router.put("/:id", checkAuth, OrderControllers.toggleOrderStatus);
 router.get("/filter", checkAuth, OrderControllers.getFilteredOrders);
 router.post("/payment-intent", OrderControllers.createPaymentIntent);
 router.post("/track", OrderControllers.trackByOrderNumber);
+//router.post("/webhook", OrderControllers.stripeWebhook);
+router.put(
+  "/payment-status/:orderNumber",
+  OrderControllers.changePaymentOrderStatus
+);
+// router.delete("/:orderNumber", OrderControllers.deleteOrderByOrderNumber);
 export const OrderRoutes = router;

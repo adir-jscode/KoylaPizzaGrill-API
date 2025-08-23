@@ -33,6 +33,12 @@ const loadEnviromentVariables = () => {
         "REDIS_PORT",
         "REDIS_USERNAME",
         "REDIS_PASSWORD",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_SECRET_KEY",
+        "URL",
+        "FRONTEND_PROD_URL_02",
+        "RESEND_API_KEY",
+        "RESEND_FROM",
     ];
     requiredEnvVariables.forEach((key) => {
         if (!process.env[key]) {
@@ -67,6 +73,12 @@ const loadEnviromentVariables = () => {
         REDIS_PORT: process.env.REDIS_PORT,
         REDIS_USERNAME: process.env.REDIS_USERNAME,
         REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+        STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+        STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+        URL: process.env.URL,
+        FRONTEND_PROD_URL_02: process.env.FRONTEND_PROD_URL_02,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        RESEND_FROM: process.env.RESEND_FROM,
     };
 };
 exports.envVars = loadEnviromentVariables();

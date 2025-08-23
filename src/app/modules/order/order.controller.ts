@@ -1,14 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-
 import httpStatus from "http-status-codes";
 import { sendResponse } from "../../utils/sendResponse";
 import AppError from "../../errorHelpers/AppError";
-import { PAYMENT_STATUS } from "../payment/payment.interface";
-import { Payment } from "../payment/payment.model";
 import Stripe from "stripe";
-import { Order } from "./order.model";
 import { stripe } from "../../config/stripe";
 import { OrderServices } from "./order.service";
+import { envVars } from "../../config/env";
+import { sendEmail } from "../../utils/sendMail";
+import { success } from "zod";
+import { Order } from "./order.model";
 
 // POST /orders/payment-intent
 const createPaymentIntent = async (
@@ -38,6 +38,123 @@ const createPaymentIntent = async (
     });
   } catch (err) {
     next(err);
+  }
+};
+
+//stripe webhook
+const stripeWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const sig = (req.headers["stripe-signature"] as string) || "";
+  const webhookSecret = envVars.STRIPE_WEBHOOK_SECRET;
+
+  if (!sig || !webhookSecret) {
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .send("Missing stripe-signature or webhook secret");
+  }
+  if (!Buffer.isBuffer(req.body)) {
+    return res
+      .status(400)
+      .send("Body is not raw Buffer. Check express.raw placement.");
+  }
+
+  let event: Stripe.Event;
+  try {
+    // req.body is a Buffer because of express.raw
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    console.error("Error verifying webhook signature:", err);
+    return res.status(400).send(`Webhook Error: ${(err as Error).message}`);
+  }
+
+  try {
+    let orderNumber = "";
+    if (event.type === "payment_intent.succeeded") {
+      const stripeObject = event.data.object;
+      const { metadata } = stripeObject;
+      orderNumber = metadata?.orderNumber;
+      if (orderNumber) {
+        await OrderServices.updatePaymentOrderStatus(orderNumber);
+
+        const orderDetails = await OrderServices.trackByOrderNumber(
+          orderNumber
+        );
+
+        const TrackOrder = `${envVars.URL}/track-order?orderNumber=${orderNumber}`;
+        await sendEmail({
+          to: orderDetails.customerEmail as string,
+          subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
+          templateName: "order",
+          templateData: {
+            customerName: orderDetails.customerName,
+            orderNumber,
+            orderDateTime: new Date().toLocaleString("en-US"),
+            orderItems: orderDetails.orderItems,
+            subtotal: Number(orderDetails.subtotal),
+            deliveryFee: Number(orderDetails.deliveryCharge),
+            tip: Number(orderDetails.tip),
+            discount: Number(orderDetails.discount),
+            tax: Number(orderDetails.tax),
+            total: Number(orderDetails.total.toFixed(2)),
+            orderType: orderDetails.orderType,
+            deliveryAddress: orderDetails.deliveryAddress ?? "",
+            specialInstructions: orderDetails.specialInstructions ?? "",
+            status: "CONFIRMED",
+            TrackOrder,
+          },
+        });
+      }
+
+      sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Payment succeeded",
+        data: null,
+      });
+    } else if (event.type === "payment_intent.payment_failed") {
+      const stripeObject = event.data.object;
+      const { metadata } = stripeObject;
+      orderNumber = metadata?.orderNumber;
+      await OrderServices.deleteOrderByOrderNumber(orderNumber);
+      sendResponse(res, {
+        success: false,
+        statusCode: httpStatus.INTERNAL_SERVER_ERROR,
+        message: "Payment failed",
+        data: null,
+      });
+    }
+  } catch (err) {
+    console.error("Webhook handler error:", err);
+    sendResponse(res, {
+      success: false,
+      statusCode: httpStatus.INTERNAL_SERVER_ERROR,
+      message: "Webhook handler error",
+      data: null,
+    });
+  }
+};
+
+//delete order by orderNumber
+const deleteOrderByOrderNumber = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { orderNumber } = req.params;
+    const response = await OrderServices.deleteOrderByOrderNumber(orderNumber);
+    console.log(response);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Order deleted successfully",
+      data: null,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -111,7 +228,7 @@ const changePaymentOrderStatus = async (
 ) => {
   try {
     const paymentInfo = await OrderServices.updatePaymentOrderStatus(
-      req.params.id
+      req.params.orderNumber
     );
     sendResponse(res, {
       success: true,
@@ -190,4 +307,6 @@ export const OrderControllers = {
   getOrderHistory,
   toggleOrderStatus,
   trackByOrderNumber,
+  stripeWebhook,
+  deleteOrderByOrderNumber,
 };

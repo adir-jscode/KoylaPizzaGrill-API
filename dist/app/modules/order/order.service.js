@@ -26,10 +26,8 @@ const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const date_fns_1 = require("date-fns");
 const restaurantSettings_model_1 = require("../restaurantSettings/restaurantSettings.model");
 const otp_service_1 = require("../otp/otp.service");
-const sendMail_1 = require("../../utils/sendMail");
 const crypto_1 = __importDefault(require("crypto"));
 const coupons_service_1 = require("../coupons/coupons.service");
-const env_1 = require("../../config/env");
 const getTransactionId = () => {
     return `tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
@@ -37,23 +35,24 @@ const generateOrderNumber = (length = 6) => {
     const randomNum = crypto_1.default.randomInt(10 ** (length - 1), 10 ** length);
     return `KPG-${randomNum}`;
 };
-const updatePaymentOrderStatus = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
-    const order = yield order_model_1.Order.findById(orderId);
+const updatePaymentOrderStatus = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(orderNumber);
+    const order = yield order_model_1.Order.findOne({ orderNumber: orderNumber });
     if (!order) {
-        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order id not found");
+        throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Order not found");
     }
     order.status = "CONFIRMED";
     order.statusHistory.push({
         status: "CONFIRMED",
         updatedAt: new Date().toISOString(),
     });
-    order.save();
+    yield order.save();
     const payment = yield payment_model_1.Payment.findById(order.payment);
     if (!payment) {
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment not received");
     }
     payment.status = payment_interface_1.PAYMENT_STATUS.PAID;
-    payment.save();
+    yield payment.save();
     return payment;
 });
 const orderHistoryByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
@@ -245,7 +244,6 @@ const calulateOrderAmount = (payload) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
     const session = yield order_model_1.Order.startSession();
     let transactionCommitted = false;
     yield session.startTransaction();
@@ -256,7 +254,7 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         let paymentDoc;
         let paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         const calculation = yield calulateOrderAmount(payload);
-        let orderStatus = "CONFIRMED";
+        let orderStatus = "PENDING";
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
             paymentStatus = payment_interface_1.PAYMENT_STATUS.UNPAID;
         }
@@ -270,25 +268,29 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         // CARD PAYMENT
         // let paymentDoc: IPayment & Document;
         // let orderDoc: IOrder & Document;
-        const { paymentIntentId } = payload;
-        if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD && paymentIntentId) {
-            if (!paymentIntentId) {
+        let generatePaymentIntent;
+        if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD) {
+            //check payment failed
+            generatePaymentIntent = yield stripe_1.stripe.paymentIntents.create({
+                amount: Number(Math.round(Number(calculation.total) * 100).toFixed(2)),
+                currency: "usd",
+                payment_method_types: ["card"],
+                metadata: { orderNumber: orderNumber, tempId: Date.now().toString() },
+                receipt_email: calculation.customerEmail,
+            });
+            if (!generatePaymentIntent) {
                 throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Missing paymentIntentId for card payment");
             }
             // Retrieve and check intent status
-            const paymentIntent = yield stripe_1.stripe.paymentIntents.retrieve(paymentIntentId);
-            console.log(paymentIntent);
-            if (paymentIntent.status !== "succeeded") {
-                throw new AppError_1.default(http_status_codes_1.default.PAYMENT_REQUIRED, "Stripe payment not completed");
-            }
+            const paymentIntent = yield stripe_1.stripe.paymentIntents.retrieve(generatePaymentIntent.id);
             // Await Payment.create and then get first document
             const paymentDocs = yield payment_model_1.Payment.create([
                 {
                     order: undefined,
                     transactionId,
-                    paymentIntentId,
+                    paymentIntentId: generatePaymentIntent.id,
                     amount: Number(calculation.total.toFixed(2)),
-                    status: payment_interface_1.PAYMENT_STATUS.PAID,
+                    status: payment_interface_1.PAYMENT_STATUS.UNPAID,
                     paymentMethod: order_interface_1.PAYMENT_METHOD.CARD,
                 },
             ], { session });
@@ -297,37 +299,12 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             const orderDocs = yield order_model_1.Order.create([
                 Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: Number(calculation.deliveryFee.toFixed(2)), tax: Number(calculation.tax.toFixed(2)), tip: Number(calculation.tip.toFixed(2)), scheduledTime: calculation.isScheduled
                         ? calculation.scheduledTime
-                        : undefined, discount: Number(calculation.discount.toFixed(2)), total: Number(calculation.total.toFixed(2)), status: "CONFIRMED", statusHistory: [
+                        : undefined, discount: Number(calculation.discount.toFixed(2)), total: Number(calculation.total.toFixed(2)), status: "PENDING", statusHistory: [
                         { status: "PENDING", updatedAt: new Date().toISOString() },
-                        { status: "CONFIRMED", updatedAt: new Date().toISOString() },
                     ], payment: paymentDoc._id }),
             ], { session });
             orderDoc = orderDocs[0];
             yield payment_model_1.Payment.findByIdAndUpdate(paymentDoc._id, { order: orderDoc._id }, { session });
-            const TrackOrder = `${env_1.envVars.SITE_URL}/track-order?orderNumber=${orderNumber}`;
-            console.log(TrackOrder);
-            yield (0, sendMail_1.sendEmail)({
-                to: payload.customerEmail,
-                subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
-                templateName: "order", // Match your template file name here
-                templateData: {
-                    customerName: payload.customerName,
-                    orderNumber: orderNumber,
-                    orderDateTime: new Date().toLocaleString("en-US"),
-                    orderItems: calculation.preparedItems,
-                    subtotal: Number(calculation.subtotal),
-                    deliveryFee: Number(calculation.deliveryFee),
-                    tip: Number(calculation.tip),
-                    discount: Number(calculation.discount),
-                    tax: Number(calculation.tax),
-                    total: Number(calculation.total.toFixed(2)),
-                    orderType: payload.orderType,
-                    deliveryAddress: (_a = payload.deliveryAddress) !== null && _a !== void 0 ? _a : "",
-                    specialInstructions: (_b = payload.specialInstructions) !== null && _b !== void 0 ? _b : "",
-                    status: "CONFIRMED",
-                    TrackOrder: TrackOrder,
-                },
-            });
         }
         // CASH PAYMENT FLOW
         if (payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CASH) {
@@ -345,7 +322,6 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             const orderDocs = yield order_model_1.Order.create([
                 Object.assign(Object.assign({}, payload), { orderNumber, orderItems: calculation.preparedItems, subtotal: Number(calculation.subtotal.toFixed(2)), deliveryCharge: calculation.deliveryFee, tax: calculation.tax, tip: calculation.tip, discount: calculation.discount, total: Number(calculation.total.toFixed(2)), status: orderStatus, statusHistory: [
                         { status: "PENDING", updatedAt: new Date().toISOString() },
-                        { status: "CONFIRMED", updatedAt: new Date().toISOString() },
                     ], payment: paymentDoc._id }),
             ], { session });
             orderDoc = orderDocs[0];
@@ -362,6 +338,11 @@ const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () 
         return {
             order: latestOrder !== null && latestOrder !== void 0 ? latestOrder : orderDoc,
             payment: latestPayment !== null && latestPayment !== void 0 ? latestPayment : paymentDoc,
+            orderNumber: orderDoc === null || orderDoc === void 0 ? void 0 : orderDoc.orderNumber,
+            clientSecret: payload.paymentMethod === order_interface_1.PAYMENT_METHOD.CARD
+                ? generatePaymentIntent === null || generatePaymentIntent === void 0 ? void 0 : generatePaymentIntent.client_secret
+                : undefined,
+            paymentIntentId: generatePaymentIntent === null || generatePaymentIntent === void 0 ? void 0 : generatePaymentIntent.id,
         };
     }
     catch (error) {
@@ -379,10 +360,19 @@ const trackByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, fu
     }
     return order;
 });
+//delete order by orderNumber
+const deleteOrderByOrderNumber = (orderNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield order_model_1.Order.findOneAndDelete({ orderNumber });
+    if (!result) {
+        throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Order not found");
+    }
+    return result;
+});
 exports.OrderServices = {
     createOrder,
     trackByOrderNumber,
     filteredOrders,
+    deleteOrderByOrderNumber,
     getAllOrder,
     changeOrderStatus,
     updatePaymentOrderStatus,

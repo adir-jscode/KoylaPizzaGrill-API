@@ -33,23 +33,24 @@ const generateOrderNumber = (length = 6) => {
   return `KPG-${randomNum}`;
 };
 
-const updatePaymentOrderStatus = async (orderId: string) => {
-  const order = await Order.findById(orderId);
+const updatePaymentOrderStatus = async (orderNumber: string) => {
+  console.log(orderNumber);
+  const order = await Order.findOne({ orderNumber: orderNumber });
   if (!order) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Order id not found");
+    throw new AppError(httpStatus.BAD_REQUEST, "Order not found");
   }
   order.status = "CONFIRMED";
   order.statusHistory.push({
     status: "CONFIRMED",
     updatedAt: new Date().toISOString(),
   });
-  order.save();
+  await order.save();
   const payment = await Payment.findById(order.payment);
   if (!payment) {
     throw new AppError(httpStatus.BAD_REQUEST, "Payment not received");
   }
   payment.status = PAYMENT_STATUS.PAID;
-  payment.save();
+  await payment.save();
   return payment;
 };
 
@@ -309,7 +310,7 @@ const createOrder = async (
 
     const calculation = await calulateOrderAmount(payload);
 
-    let orderStatus: IStatusHistory["status"] = "CONFIRMED";
+    let orderStatus: IStatusHistory["status"] = "PENDING";
     if (payload.paymentMethod === PAYMENT_METHOD.CASH) {
       paymentStatus = PAYMENT_STATUS.UNPAID;
     }
@@ -325,9 +326,18 @@ const createOrder = async (
     // CARD PAYMENT
     // let paymentDoc: IPayment & Document;
     // let orderDoc: IOrder & Document;
-    const { paymentIntentId } = payload;
-    if (payload.paymentMethod === PAYMENT_METHOD.CARD && paymentIntentId) {
-      if (!paymentIntentId) {
+    let generatePaymentIntent;
+    if (payload.paymentMethod === PAYMENT_METHOD.CARD) {
+      //check payment failed
+
+      generatePaymentIntent = await stripe.paymentIntents.create({
+        amount: Number(Math.round(Number(calculation.total) * 100).toFixed(2)),
+        currency: "usd",
+        payment_method_types: ["card"],
+        metadata: { orderNumber: orderNumber, tempId: Date.now().toString() },
+        receipt_email: calculation.customerEmail,
+      });
+      if (!generatePaymentIntent) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           "Missing paymentIntentId for card payment"
@@ -336,15 +346,8 @@ const createOrder = async (
 
       // Retrieve and check intent status
       const paymentIntent = await stripe.paymentIntents.retrieve(
-        paymentIntentId as string
+        generatePaymentIntent.id as string
       );
-      console.log(paymentIntent);
-      if (paymentIntent.status !== "succeeded") {
-        throw new AppError(
-          httpStatus.PAYMENT_REQUIRED,
-          "Stripe payment not completed"
-        );
-      }
 
       // Await Payment.create and then get first document
 
@@ -353,9 +356,9 @@ const createOrder = async (
           {
             order: undefined,
             transactionId,
-            paymentIntentId,
+            paymentIntentId: generatePaymentIntent.id,
             amount: Number(calculation.total.toFixed(2)),
-            status: PAYMENT_STATUS.PAID,
+            status: PAYMENT_STATUS.UNPAID,
             paymentMethod: PAYMENT_METHOD.CARD,
           },
         ],
@@ -379,10 +382,9 @@ const createOrder = async (
               : undefined,
             discount: Number(calculation.discount.toFixed(2)),
             total: Number(calculation.total.toFixed(2)),
-            status: "CONFIRMED",
+            status: "PENDING",
             statusHistory: [
               { status: "PENDING", updatedAt: new Date().toISOString() },
-              { status: "CONFIRMED", updatedAt: new Date().toISOString() },
             ],
             payment: paymentDoc._id,
           },
@@ -395,30 +397,6 @@ const createOrder = async (
         { order: orderDoc._id },
         { session }
       );
-      const TrackOrder = `${envVars.SITE_URL}/track-order?orderNumber=${orderNumber}`;
-      console.log(TrackOrder);
-      await sendEmail({
-        to: payload.customerEmail as string,
-        subject: `Order Confirmation - Koyla Pizza Grill #${orderNumber}`,
-        templateName: "order", // Match your template file name here
-        templateData: {
-          customerName: payload.customerName,
-          orderNumber: orderNumber,
-          orderDateTime: new Date().toLocaleString("en-US"),
-          orderItems: calculation.preparedItems,
-          subtotal: Number(calculation.subtotal),
-          deliveryFee: Number(calculation.deliveryFee),
-          tip: Number(calculation.tip),
-          discount: Number(calculation.discount),
-          tax: Number(calculation.tax),
-          total: Number(calculation.total.toFixed(2)),
-          orderType: payload.orderType,
-          deliveryAddress: payload.deliveryAddress ?? "",
-          specialInstructions: payload.specialInstructions ?? "",
-          status: "CONFIRMED",
-          TrackOrder: TrackOrder,
-        },
-      });
     }
 
     // CASH PAYMENT FLOW
@@ -457,7 +435,6 @@ const createOrder = async (
             status: orderStatus,
             statusHistory: [
               { status: "PENDING", updatedAt: new Date().toISOString() },
-              { status: "CONFIRMED", updatedAt: new Date().toISOString() },
             ],
             payment: paymentDoc._id,
           },
@@ -484,6 +461,12 @@ const createOrder = async (
     return {
       order: latestOrder ?? orderDoc,
       payment: latestPayment ?? paymentDoc,
+      orderNumber: orderDoc?.orderNumber,
+      clientSecret:
+        payload.paymentMethod === PAYMENT_METHOD.CARD
+          ? generatePaymentIntent?.client_secret
+          : undefined,
+      paymentIntentId: generatePaymentIntent?.id,
     };
   } catch (error) {
     if (!transactionCommitted) {
@@ -502,10 +485,20 @@ const trackByOrderNumber = async (orderNumber: string) => {
   return order;
 };
 
+//delete order by orderNumber
+const deleteOrderByOrderNumber = async (orderNumber: string) => {
+  const result = await Order.findOneAndDelete({ orderNumber });
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
+  return result;
+};
+
 export const OrderServices = {
   createOrder,
   trackByOrderNumber,
   filteredOrders,
+  deleteOrderByOrderNumber,
   getAllOrder,
   changeOrderStatus,
   updatePaymentOrderStatus,
